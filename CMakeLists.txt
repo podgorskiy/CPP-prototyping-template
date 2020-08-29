@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.6)
 
 cmake_policy(SET CMP0072 NEW)
-cmake_policy(SET CMP0048 OLD)
+cmake_policy(SET CMP0048 NEW)
 
 project(imgui_template)
 
@@ -120,8 +120,12 @@ target_include_directories(fsal PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/libs/lz4/lib)
 # imgui
 #####################################################################
 set(IMGUI_DIR libs/imgui)
-file(GLOB IMGUI_SOURCES ${IMGUI_DIR}/*.cpp ${IMGUI_DIR}/*.h )
-add_library(imgui ${IMGUI_SOURCES})
+file(GLOB IMGUI_SOURCES ${IMGUI_DIR}/*.cpp ${IMGUI_DIR}/*.h)
+add_library(imgui  ${IMGUI_SOURCES}
+                   ${IMGUI_DIR}/examples/imgui_impl_glfw.cpp
+                   ${IMGUI_DIR}/examples/imgui_impl_glfw.h
+                   ${IMGUI_DIR}/examples/imgui_impl_opengl3.cpp
+                   ${IMGUI_DIR}/examples/imgui_impl_opengl3.h)
 #####################################################################
 
 

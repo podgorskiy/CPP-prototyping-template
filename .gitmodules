@@ -13,3 +13,24 @@
 [submodule "libs/stb"]
 	path = libs/stb
 	url = https://github.com/nothings/stb.git
+[submodule "libs/spdlog"]
+	path = libs/spdlog
+	url = https://github.com/gabime/spdlog.git
+[submodule "libs/doctest"]
+	path = libs/doctest
+	url = https://github.com/onqtam/doctest.git
+[submodule "libs/yaml-cpp"]
+	path = libs/yaml-cpp
+	url = https://github.com/jbeder/yaml-cpp.git
+[submodule "libs/fsal"]
+	path = libs/fsal
+	url = https://github.com/podgorskiy/fsal.git
+[submodule "libs/lz4"]
+	path = libs/lz4
+	url = https://github.com/lz4/lz4.git
+[submodule "libs/zlib"]
+	path = libs/zlib
+	url = https://github.com/madler/zlib.git
+[submodule "libs/pugixml"]
+	path = libs/pugixml
+	url = https://github.com/zeux/pugixml.git
