@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.6)
 cmake_policy(SET CMP0072 NEW)
 cmake_policy(SET CMP0048 NEW)
 
-project(imgui_template)
+project(CPP-prototyping-template)
 
 option (GLFW_BUILD_EXAMPLES OFF)
 option (GLFW_BUILD_TESTS OFF)
@@ -164,20 +164,20 @@ file(GLOB_RECURSE SOURCES sources/*.cpp sources/*.h sources/*.c sources/*.cc)
 #####################################################################
 # Targets
 #####################################################################
-add_executable(imgui_template ${SOURCES})
+add_executable(main ${SOURCES})
 #####################################################################
 
 #####################################################################
 # Linkage
 #####################################################################
 set(LIBRARIES rt m  stdc++fs gomp  ${PYTHON_LIBRARY} glfw gl3w imgui pthread dl pugixml fsal lz4 zlib_static yaml-cpp ${OPENGL_LIBRARIES} )
-target_link_libraries(imgui_template PRIVATE ${LIBRARIES})
-SET_TARGET_PROPERTIES(imgui_template PROPERTIES PREFIX "_")
+target_link_libraries(main PRIVATE ${LIBRARIES})
+SET_TARGET_PROPERTIES(main PROPERTIES PREFIX "_")
 #####################################################################
 
 if(MSVC)
 else()
-	target_link_libraries(imgui_template PRIVATE stdc++fs)
-	target_compile_options(imgui_template PRIVATE -lstdc++fs -Wno-switch)
-	target_link_options(imgui_template PRIVATE -static-libstdc++)
+	target_link_libraries(main PRIVATE stdc++fs)
+	target_compile_options(main PRIVATE -lstdc++fs -Wno-switch)
+	target_link_options(main PRIVATE -static-libstdc++)
 endif()
