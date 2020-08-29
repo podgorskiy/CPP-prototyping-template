@@ -8,21 +8,8 @@ public:
 	~Application();
 
 	void Draw(float time);
-	void Resize(int width, int height);
+	void Resize(int width, int height, int display_w, int display_h);
 
 private:
-	unsigned int m_program;
-	unsigned int m_attrib_pos;
-
-	unsigned int m_uniform_transform;
-	unsigned int m_uniform_color;
-
-	unsigned int m_vertexBufferObject;
-	unsigned int m_indexBufferObject;
-
-	glm::vec3 m_color;
-
-	int m_width;
-	int m_height;
-	float m_triangleRotation;
+	glm::vec3 m_color = glm::vec3(0.f);
 };

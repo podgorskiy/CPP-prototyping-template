@@ -1,4 +1,5 @@
 #include "Application.h"
+#include <GL/gl3w.h>
 
 #include <GLFW/glfw3.h>
 #include <memory>
@@ -24,6 +25,14 @@ int main()
 	glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
 
+	gl3wInit();
+
+	const char* OpenGLversion = (const char*)glGetString(GL_VERSION);
+	const char* GLSLversion = (const char*)glGetString(GL_SHADING_LANGUAGE_VERSION);
+
+	printf("OpenGL %s GLSL: %s", OpenGLversion, GLSLversion);
+	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+
     ImGui::CreateContext();
 
 	ImGui::StyleColorsDark();
@@ -36,14 +45,20 @@ int main()
 	    const char* glsl_version = "#version 130";
 	    ImGui_ImplOpenGL3_Init(glsl_version);
 
-		app->Resize(640, 640);
+		int width, height, display_w, display_h;
+		glfwGetWindowSize(window, &width, &height);
+		glfwGetFramebufferSize(window, &display_w, &display_h);
+
+		app->Resize(width, height, display_w, display_h);
 		
 		glfwSetWindowUserPointer(window, app.get());
 
 		glfwSetWindowSizeCallback(window, [](GLFWwindow* window, int width, int height)
 		{
-			Application* app = static_cast<Application*>(glfwGetWindowUserPointer(window));
-			app->Resize(width, height);
+			auto app = static_cast<Application*>(glfwGetWindowUserPointer(window));
+		    int display_w, display_h;
+		    glfwGetFramebufferSize(window, &display_w, &display_h);
+			app->Resize(width, height, display_w, display_h);
 		});
 
 		glfwSetKeyCallback(window, [](GLFWwindow*, int key, int, int action, int mods)
@@ -94,6 +109,11 @@ int main()
 	        ImGui_ImplOpenGL3_NewFrame();
 	        ImGui_ImplGlfw_NewFrame();
 	        ImGui::NewFrame();
+
+		    glfwGetFramebufferSize(window, &display_w, &display_h);
+
+			glViewport(0, 0, display_w, display_h);
+			glClear(GL_COLOR_BUFFER_BIT);
 
 			app->Draw(elapsed_time.count());
 
