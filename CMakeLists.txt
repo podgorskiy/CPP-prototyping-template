@@ -55,30 +55,11 @@ add_library(imgui ${IMGUI_SOURCES} ${IMGUI_DIR}/examples/imgui_impl_opengl3.cpp 
 ##############################################################
 # Targets
 ##############################################################
-file(GLOB_RECURSE SOURCES 17_2_imgui/sources/*.cpp src/*.h)
+file(GLOB_RECURSE SOURCES sources/*.cpp src/*.h)
 add_executable(imgui_template ${SOURCES})
 
 ##############################################################
 # Linkage
 ##############################################################
 target_link_libraries(imgui_template gl3w glfw imgui ${OPENGL_LIBRARIES})
-
-
-#####################################################################
-# Examples
-#####################################################################
-add_subdirectory (7_GLFW_Sierpinski)
-add_subdirectory (9_1_GL3W_basic)
-add_subdirectory (9_2_Triangle_VertexBuffers_CPU)
-add_subdirectory (10_1_Triangle_VertexBuffers_GPU)
-add_subdirectory (10_2_Rendering_Triangle_Colors)
-add_subdirectory (10_3_Uniforms)
-add_subdirectory (10_4_Uniforms_Rotation)
-add_subdirectory (11_PolarCoordinates)
-add_subdirectory (12_Mesh_Obj_File)
-add_subdirectory (16_GLFW_input)
-add_subdirectory (17_interaction_imgui)
-add_subdirectory (18_lambert_shaders)
-add_subdirectory (19_cubemap_normalmapping)
-add_subdirectory (20_pbr)
 
