@@ -1,3 +1,3 @@
-# OpenGLExamples
+# ImGUI template
 
-OpenGL examples that I created for Interactive Computer Graphics course.
+For quick prototyping in C++
