@@ -177,7 +177,7 @@ int Evaluate(const Board& board, const GameState& gs, bool for_black)
 	if (ew == 0) ew = -1000000;
 	if (eb == 0) eb = 1000000;
 	int e = ew + eb;
-	// return (for_black ? -e : e) + distance;
+	return (for_black ? -e : e) - distance;
 	return distance;
 }
 
@@ -197,11 +197,11 @@ struct Command
 	Command(int new_eval, Action action, int op_id): new_eval(new_eval), action(action), op_id(op_id) {}
 };
 
-Command TraverseState(const Board& board, GameState& gs, bool for_black, int depth)
+Command TraverseState(Board& board, GameState& gs, bool for_black, int depth)
 {
 	if (depth == 0)
 	{
-		return Command(Evaluate(board, gs, !for_black));
+		return Command(Evaluate(board, gs, for_black));
 	}
 	Operator* ops = !for_black ? gs.white_ops  : gs.black_ops;
 	int count = !for_black ? board.w_ops_count  : board.b_ops_count;
@@ -221,33 +221,49 @@ Command TraverseState(const Board& board, GameState& gs, bool for_black, int dep
 		// move left
 		if (board.get_cell(op.x - 1, op.y) == Board::Walkable)
 		{
+			board.clear_cell(op.x, op.y);
 			--op.x;
+			board.set_cell_op(op.x, op.y, i, for_black);
 			ev[Command::ml] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
+			board.clear_cell(op.x, op.y);
 			++op.x;
+			board.set_cell_op(op.x, op.y, i, for_black);
 		}
 
 		// move right
 		if (board.get_cell(op.x + 1, op.y) == Board::Walkable)
 		{
+			board.clear_cell(op.x, op.y);
 			++op.x;
+			board.set_cell_op(op.x, op.y, i, for_black);
 			ev[Command::mr] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
+			board.clear_cell(op.x, op.y);
 			--op.x;
+			board.set_cell_op(op.x, op.y, i, for_black);
 		}
 
 		// move down
 		if (board.get_cell(op.x, op.y  +1) == Board::Walkable)
 		{
+			board.clear_cell(op.x, op.y);
 			++op.y;
+			board.set_cell_op(op.x, op.y, i, for_black);
 			ev[Command::md] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
+			board.clear_cell(op.x, op.y);
 			--op.y;
+			board.set_cell_op(op.x, op.y, i, for_black);
 		}
 
 		// move up
 		if (board.get_cell(op.x, op.y - 1) == Board::Walkable)
 		{
+			board.clear_cell(op.x, op.y);
 			--op.y;
+			board.set_cell_op(op.x, op.y, i, for_black);
 			ev[Command::mu] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
+			board.clear_cell(op.x, op.y);
 			++op.y;
+			board.set_cell_op(op.x, op.y, i, for_black);
 		}
 
 		auto& opl = board.get_opp(gs, op.x - 1, op.y + 0, for_black, !for_black);
@@ -344,7 +360,7 @@ Command TraverseState(const Board& board, GameState& gs, bool for_black, int dep
 	}
 	if (max == -1000000)
 		return Command(Evaluate(board, gs, for_black));
-	return Command(max - 1, max_aid, max_op);
+	return Command((max * 90) / 100, max_aid, max_op);
 }
 
 Application::Application()
@@ -549,7 +565,7 @@ void Application::Draw(float time)
 
 	if (ImGui::Button("Make move") || for_black)
 	{
-		Command tr = TraverseState(board, board.gs, for_black, 1);
+		Command tr = TraverseState(board, board.gs, for_black, 12);
 		MakeMove(tr, for_black);
 		for_black = !for_black;
 	}
