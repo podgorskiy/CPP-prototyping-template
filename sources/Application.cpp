@@ -419,30 +419,23 @@ Command AlphaBetaNegamax(Board& board, int alpha, int betta, Turn turn, int dept
 			}
 
 			cmd.new_eval = -AlphaBetaNegamax(board, -betta, -alpha, Next(turn), depth - 1).new_eval;
-			value = std::max(value, cmd);
 			enemy_opp = backup;
 			board.set_cell_op(enemy_opp.x, enemy_opp.y, id, Next(turn));
-			alpha = std::max(alpha, value.new_eval);
-			if (alpha > betta)
-			{
-				goto end;
-			}
 		}
 		else if (cmd.action == Command::move)
 		{
 			board.move_piece(op.x, op.y, cmd.dir, turn);
 			cmd.new_eval = -AlphaBetaNegamax(board, -betta, -alpha, Next(turn), depth - 1).new_eval;
-			value = std::max(value, cmd);
 			board.move_piece(op.x, op.y, Board::GetOpposit(cmd.dir), turn);
-			alpha = std::max(alpha, value.new_eval);
-			if (alpha > betta)
-			{
-				goto end;
-			}
+		}
+		value = std::max(value, cmd);
+		alpha = std::max(alpha, value.new_eval);
+		if (alpha > betta)
+		{
+			return value;
 		}
 	}
 
-end:
 	return value;
 }
 
