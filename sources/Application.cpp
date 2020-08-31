@@ -260,38 +260,6 @@ Command TraverseState(Board& board, GameState& gs, bool for_black, int depth)
 
 		int ev[2][4] = {{-10000000, -10000000, -10000000, -10000000}, {-10000000, -10000000, -10000000, -10000000}};
 
-		// move left
-		if (board.get_cell(op.x - 1, op.y) == Board::Walkable)
-		{
-			board.move_piece(op.x, op.y, Board::Left, for_black);
-			ev[Command::move][Board::Left] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
-			board.move_piece(op.x, op.y, Board::Right, for_black);
-		}
-
-		// move right
-		if (board.get_cell(op.x + 1, op.y) == Board::Walkable)
-		{
-			board.move_piece(op.x, op.y, Board::Right, for_black);
-			ev[Command::move][Board::Right] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
-			board.move_piece(op.x, op.y, Board::Left, for_black);
-		}
-
-		// move down
-		if (board.get_cell(op.x, op.y + 1) == Board::Walkable)
-		{
-			board.move_piece(op.x, op.y, Board::Down, for_black);
-			ev[Command::move][Board::Down] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
-			board.move_piece(op.x, op.y, Board::Up, for_black);
-		}
-
-		// move up
-		if (board.get_cell(op.x, op.y - 1) == Board::Walkable)
-		{
-			board.move_piece(op.x, op.y, Board::Up, for_black);
-			ev[Command::move][Board::Up] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
-			board.move_piece(op.x, op.y, Board::Down, for_black);
-		}
-
 		auto& opl = board.get_opp(gs, op.x - 1, op.y + 0, for_black, !for_black);
 		auto& opr = board.get_opp(gs, op.x + 1, op.y + 0, for_black, !for_black);
 		auto& opd = board.get_opp(gs, op.x + 0, op.y + 1, for_black, !for_black);
@@ -369,6 +337,39 @@ Command TraverseState(Board& board, GameState& gs, bool for_black, int depth)
 			opu = backup;
 			board.set_cell_op(opu.x, opu.y, id, !for_black);
 		}
+
+		// move left
+		if (board.get_cell(op.x - 1, op.y) == Board::Walkable)
+		{
+			board.move_piece(op.x, op.y, Board::Left, for_black);
+			ev[Command::move][Board::Left] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
+			board.move_piece(op.x, op.y, Board::Right, for_black);
+		}
+
+		// move right
+		if (board.get_cell(op.x + 1, op.y) == Board::Walkable)
+		{
+			board.move_piece(op.x, op.y, Board::Right, for_black);
+			ev[Command::move][Board::Right] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
+			board.move_piece(op.x, op.y, Board::Left, for_black);
+		}
+
+		// move down
+		if (board.get_cell(op.x, op.y + 1) == Board::Walkable)
+		{
+			board.move_piece(op.x, op.y, Board::Down, for_black);
+			ev[Command::move][Board::Down] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
+			board.move_piece(op.x, op.y, Board::Up, for_black);
+		}
+
+		// move up
+		if (board.get_cell(op.x, op.y - 1) == Board::Walkable)
+		{
+			board.move_piece(op.x, op.y, Board::Up, for_black);
+			ev[Command::move][Board::Up] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
+			board.move_piece(op.x, op.y, Board::Down, for_black);
+		}
+
 		int max = ev[Command::move][Board::Left];
 		Command::Action max_aid = Command::move;
 		Board::Direction max_dir = Board::Left;
