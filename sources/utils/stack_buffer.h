@@ -71,18 +71,14 @@ public:
 	template<typename... _Args>
 	void emplace_back(_Args&&... args)
 	{
-		if (_resize(1 + m_size))
-		{
-			new (m_data + m_size++) T(args...);
-		}
+		_reserv(1 + m_size);
+		new (m_data + m_size++) T(args...);
 	}
 
 	void push_back(const value_type& x)
 	{
-		if (_resize(1 + m_size))
-		{
-			m_data[m_size++] = x;
-		}
+		_reserv(1 + m_size);
+		m_data[m_size++] = x;
 	}
 
 	void push_back(value_type&& __x) { emplace_back(std::move(__x)); }
@@ -93,13 +89,13 @@ public:
 
 	void resize(size_type new_size)
     {
-		_resize(new_size);
+		_reserv(new_size);
+		m_size = new_size;
     }
 private:
-	bool _resize(size_type new_size)
+	bool _reserv(size_type new_size)
 	{
 		assert(new_size <= Size);
-		m_size = new_size;
 		return new_size <= Size;
 	}
 
