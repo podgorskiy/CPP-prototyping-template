@@ -246,8 +246,6 @@ int Evaluate(const Board& board, const GameState& gs, Turn turn)
 		}
 	}
 
-	if (ew == 0) ew = -1000000;
-	if (eb == 0) eb = 1000000;
 	int e = ew + eb + distance;
 	e += move_number;
 	return (turn == WhitePLay ? e : -e);
