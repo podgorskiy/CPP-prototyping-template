@@ -8,6 +8,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+int move_number = 0;
 
 #pragma pack(push,1)
 struct Operator
@@ -32,9 +33,9 @@ struct Operator
 	{
 		switch (type)
 		{
-			case Operator::Pawn: return 10 * health;
-			case Operator::Knight: return 20 * health;
-			case Operator::Rook: return 30 * health;
+			case Operator::Pawn: return 100 * health;
+			case Operator::Knight: return 200 * health;
+			case Operator::Rook: return 300 * health;
 		}
 		return 0;
 	}
@@ -59,6 +60,27 @@ struct Board
 		HasW = 0x1000,
 		HasB = 0x2000,
 	};
+	enum Direction
+	{
+		Left,
+		Right,
+		Down,
+		Up,
+		NoDir
+	};
+
+	static void MoveCoord(int& x, int& y, Direction dir)
+	{
+		switch(dir)
+		{
+			case Left: --x; break;
+			case Right: ++x; break;
+			case Down: ++y; break;
+			case Up: --y; break;
+			default:
+				return;
+		}
+	}
 
 	glm::ivec2 size;
 	buffer<int> cell_state;
@@ -70,6 +92,17 @@ struct Board
 	void clear_cell(int x, int y) { set_cell_and_or(x, y, 0xFF, 0); }
 	void set_cell_op(int x, int y, int op_id, bool for_black) { set_cell_and_or(x, y, 0xFF, (op_id << 8) | (for_black ? Board::HasB:Board::HasW)); }
 
+	void move_piece(int x, int y, Direction dir, bool for_black)
+	{
+		int piece = get_opp_id(gs, x, y, !for_black, for_black);
+		assert(piece != -1);
+		clear_cell(x, y);
+		MoveCoord(x, y, dir);
+		Operator* ops = !for_black ? gs.white_ops  : gs.black_ops;
+		ops[piece].x = x;
+		ops[piece].y = y;
+		set_cell_op(x, y, piece, for_black);
+	}
 
 	Operator& get_opp(GameState& gs, int x, int y, bool white, bool black) const
 	{
@@ -168,33 +201,35 @@ int Evaluate(const Board& board, const GameState& gs, bool for_black)
 			if (gs.black_ops[j].health != 0 && gs.white_ops[i].health != 0)
 			{
 				float d = sqr(gs.black_ops[j].x - gs.white_ops[i].x) + sqr(gs.black_ops[j].y - gs.white_ops[i].y);
-				distance += d * (for_black ? (gs.white_ops[i].health / gs.black_ops[j].health + 1) : (gs.black_ops[j].health / gs.white_ops[i].health + 1));
+				distance += d;// * (for_black ? (gs.white_ops[i].health / gs.black_ops[j].health + 1) : (gs.black_ops[j].health / gs.white_ops[i].health + 1));
 			}
 		}
-		ew += gs.white_ops[i].get_cost();
 	}
 
 	if (ew == 0) ew = -1000000;
 	if (eb == 0) eb = 1000000;
-	int e = ew + eb;
-	return (for_black ? -e : e) - distance;
-	return distance;
+	int e = ew + eb;// + distance;
+	e += -move_number;
+	return (for_black ? -e : e);
+
+	return -distance;
 }
 
 struct Command
 {
 	enum Action
 	{
-		ml, mr, md, mu,
-		al, ar, ad, au,
+		move,
+		attack,
 		end
 	};
 	int new_eval = 0;
 	Action action = end;
+	Board::Direction dir = Board::NoDir;
 	int op_id = -1;
 
 	Command(int new_eval): new_eval(new_eval), action(end), op_id(-1) {}
-	Command(int new_eval, Action action, int op_id): new_eval(new_eval), action(action), op_id(op_id) {}
+	Command(int new_eval, Action action, Board::Direction dir, int op_id): new_eval(new_eval), action(action), dir(dir), op_id(op_id) {}
 };
 
 Command TraverseState(Board& board, GameState& gs, bool for_black, int depth)
@@ -206,64 +241,55 @@ Command TraverseState(Board& board, GameState& gs, bool for_black, int depth)
 	Operator* ops = !for_black ? gs.white_ops  : gs.black_ops;
 	int count = !for_black ? board.w_ops_count  : board.b_ops_count;
 
-	Command::Action action_for_op[12];
 	int ev_action_for_op[12];
+	Board::Direction dir_for_op[12];
+	Command::Action action_for_op[12];
+	for (int i = 0; i < count; ++i)
+	{
+		ev_action_for_op[i] = -10000000;
+	}
 
+	bool has_alive = false;
 	for (int i = 0; i < count; ++i)
 	{
 		Operator& op = ops[i];
 
 		if (op.type == Operator::Dead)
 			continue;
+		has_alive = true;
 
-		int ev[8] = {-1000000, -1000000, -1000000, -1000000, -1000000, -1000000, -1000000, -1000000};
+		int ev[2][4] = {{-10000000, -10000000, -10000000, -10000000}, {-10000000, -10000000, -10000000, -10000000}};
 
 		// move left
 		if (board.get_cell(op.x - 1, op.y) == Board::Walkable)
 		{
-			board.clear_cell(op.x, op.y);
-			--op.x;
-			board.set_cell_op(op.x, op.y, i, for_black);
-			ev[Command::ml] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
-			board.clear_cell(op.x, op.y);
-			++op.x;
-			board.set_cell_op(op.x, op.y, i, for_black);
+			board.move_piece(op.x, op.y, Board::Left, for_black);
+			ev[Command::move][Board::Left] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
+			board.move_piece(op.x, op.y, Board::Right, for_black);
 		}
 
 		// move right
 		if (board.get_cell(op.x + 1, op.y) == Board::Walkable)
 		{
-			board.clear_cell(op.x, op.y);
-			++op.x;
-			board.set_cell_op(op.x, op.y, i, for_black);
-			ev[Command::mr] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
-			board.clear_cell(op.x, op.y);
-			--op.x;
-			board.set_cell_op(op.x, op.y, i, for_black);
+			board.move_piece(op.x, op.y, Board::Right, for_black);
+			ev[Command::move][Board::Right] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
+			board.move_piece(op.x, op.y, Board::Left, for_black);
 		}
 
 		// move down
-		if (board.get_cell(op.x, op.y  +1) == Board::Walkable)
+		if (board.get_cell(op.x, op.y + 1) == Board::Walkable)
 		{
-			board.clear_cell(op.x, op.y);
-			++op.y;
-			board.set_cell_op(op.x, op.y, i, for_black);
-			ev[Command::md] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
-			board.clear_cell(op.x, op.y);
-			--op.y;
-			board.set_cell_op(op.x, op.y, i, for_black);
+			board.move_piece(op.x, op.y, Board::Down, for_black);
+			ev[Command::move][Board::Down] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
+			board.move_piece(op.x, op.y, Board::Up, for_black);
 		}
 
 		// move up
 		if (board.get_cell(op.x, op.y - 1) == Board::Walkable)
 		{
-			board.clear_cell(op.x, op.y);
-			--op.y;
-			board.set_cell_op(op.x, op.y, i, for_black);
-			ev[Command::mu] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
-			board.clear_cell(op.x, op.y);
-			++op.y;
-			board.set_cell_op(op.x, op.y, i, for_black);
+			board.move_piece(op.x, op.y, Board::Up, for_black);
+			ev[Command::move][Board::Up] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
+			board.move_piece(op.x, op.y, Board::Down, for_black);
 		}
 
 		auto& opl = board.get_opp(gs, op.x - 1, op.y + 0, for_black, !for_black);
@@ -275,78 +301,103 @@ Command TraverseState(Board& board, GameState& gs, bool for_black, int depth)
 		if (opl.type != 0)
 		{
 			Operator backup = opl;
+			int id = (board.get_cell(backup.x, backup.y) & 0xF00) >> 8;
+
 			opl.health -= 1;
-			if (opl.health < 0)
+			if (opl.health <= 0)
 			{
 				opl.health = 0;
 				opl.type = Operator::Dead;
+				board.clear_cell(opl.x, opl.y);
 			}
 
-			ev[Command::al] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
+			ev[Command::attack][Board::Left] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
 			opl = backup;
+			board.set_cell_op(opl.x, opl.y, id, !for_black);
 		}
 
 		// attack right
 		if (opr.type != 0)
 		{
 			Operator backup = opr;
+			int id = (board.get_cell(backup.x, backup.y) & 0xF00) >> 8;
 			opr.health -= 1;
-			if (opr.health < 0)
+			if (opr.health <= 0)
 			{
 				opr.health = 0;
 				opr.type = Operator::Dead;
+				board.clear_cell(opr.x, opr.y);
 			}
 
-			ev[Command::ar] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
+			ev[Command::attack][Board::Right] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
 			opr = backup;
+			board.set_cell_op(opr.x, opr.y, id, !for_black);
 		}
 
 		// attack down
 		if (opd.type != 0)
 		{
 			Operator backup = opd;
+			int id = (board.get_cell(backup.x, backup.y) & 0xF00) >> 8;
 			opd.health -= 1;
-			if (opd.health < 0)
+			if (opd.health <= 0)
 			{
 				opd.health = 0;
 				opd.type = Operator::Dead;
+				board.clear_cell(opd.x, opd.y);
 			}
 
-			ev[Command::ad] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
+			ev[Command::attack][Board::Down] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
 			opd = backup;
+			board.set_cell_op(opd.x, opd.y, id, !for_black);
 		}
 
 		// attack up
 		if (opu.type != 0)
 		{
 			Operator backup = opu;
+			int id = (board.get_cell(backup.x, backup.y) & 0xF00) >> 8;
 			opu.health -= 1;
-			if (opu.health < 0)
+			if (opu.health <= 0)
 			{
 				opu.health = 0;
 				opu.type = Operator::Dead;
+				board.clear_cell(opu.x, opu.y);
 			}
 
-			ev[Command::au] =  -TraverseState(board, gs, !for_black, depth-1).new_eval;
+			ev[Command::attack][Board::Up] =  -TraverseState(board, gs, !for_black, depth-1).new_eval;
 			opu = backup;
+			board.set_cell_op(opu.x, opu.y, id, !for_black);
 		}
-		int max = ev[Command::ml];
-		Command::Action max_aid = Command::ml;
-		for (int j = 1; j < 8; ++j)
+		int max = ev[Command::move][Board::Left];
+		Command::Action max_aid = Command::move;
+		Board::Direction max_dir = Board::Left;
+		for (int a = 0; a < 2; ++a)
 		{
-			if (ev[j] > max)
+			for (int d = 0; d < 4; ++d)
 			{
-				max = ev[j];
-				max_aid = (Command::Action)j;
+				if (ev[a][d] > max)
+				{
+					max = ev[a][d];
+					max_aid = (Command::Action) a;
+					max_dir = (Board::Direction) d;
+				}
 			}
 		}
 
 		action_for_op[i] = max_aid;
+		dir_for_op[i] = max_dir;
 		ev_action_for_op[i] = max;
+	}
+
+	if (!has_alive)
+	{
+		return Command(Evaluate(board, gs, for_black));
 	}
 
 	int max = ev_action_for_op[0];
 	Command::Action max_aid = action_for_op[0];
+	Board::Direction max_dir = dir_for_op[0];
 	int max_op = 0;
 
 	for (int i = 1; i < count; ++i)
@@ -355,12 +406,11 @@ Command TraverseState(Board& board, GameState& gs, bool for_black, int depth)
 		{
 			max_op = i;
 			max_aid = action_for_op[i];
+			max_dir = dir_for_op[i];
 			max = ev_action_for_op[i];
 		}
 	}
-	if (max == -1000000)
-		return Command(Evaluate(board, gs, for_black));
-	return Command((max * 90) / 100, max_aid, max_op);
+	return Command(max, max_aid, max_dir, max_op);
 }
 
 Application::Application()
@@ -392,10 +442,10 @@ Application::Application()
 			board.cell_state.data()[i * board.size.x + j] = get_cell_type(ptr[i * (width + 1) + j]);
 			switch(ptr[i * (width + 1) + j])
 			{
-					case 'p': board.gs.black_ops[board.b_ops_count] = Operator({Operator::Pawn, 3, 0, uint8_t(j), uint8_t(i), 0});
+					case 'p': board.gs.black_ops[board.b_ops_count] = Operator({Operator::Pawn, 2, 0, uint8_t(j), uint8_t(i), 0});
 						board.cell_state.data()[i * board.size.x + j] |= Board::HasB | (board.b_ops_count++ << 8);
 						break;
-					case 'P': board.gs.white_ops[board.w_ops_count] = Operator({Operator::Pawn, 3,  0, uint8_t(j), uint8_t(i), 0});
+					case 'P': board.gs.white_ops[board.w_ops_count] = Operator({Operator::Pawn, 2,  0, uint8_t(j), uint8_t(i), 0});
 						board.cell_state.data()[i * board.size.x + j] |= Board::HasW | (board.w_ops_count++ << 8);
 						break;
 					case 'k': board.gs.black_ops[board.b_ops_count] = Operator({Operator::Knight, 5,  0, uint8_t(j), uint8_t(i), 0});
@@ -421,49 +471,41 @@ void MakeMove(Command tr, bool for_black)
 	Operator* f = nullptr;
 	switch (tr.action)
 	{
-		case Command::ml:
-			board.clear_cell(op.x, op.y);
-			--op.x;
-			board.set_cell_op(op.x, op.y, tr.op_id, for_black);
-			break;
-		case Command::mr:
-			board.clear_cell(op.x, op.y);
-			++op.x;
-			board.set_cell_op(op.x, op.y, tr.op_id, for_black);
-			break;
-		case Command::md:
-			board.clear_cell(op.x, op.y);
-			++op.y;
-			board.set_cell_op(op.x, op.y, tr.op_id, for_black);
-			break;
-		case Command::mu:
-			board.clear_cell(op.x, op.y);
-			--op.y;
-			board.set_cell_op(op.x, op.y, tr.op_id, for_black);
-			break;
-
-		case Command::al:
-			f = &board.get_opp(board.gs, op.x - 1, op.y + 0, true, true);
-			f->health--;
-			break;
-		case Command::ar:
-			f = &board.get_opp(board.gs, op.x + 1, op.y + 0, true, true);
-			f->health--;
-			break;
-		case Command::ad:
-			f = &board.get_opp(board.gs, op.x + 0, op.y + 1, true, true);
-			f->health--;
-			break;
-		case Command::au:
-			f = &board.get_opp(board.gs, op.x + 0, op.y - 1, true, true);
-			f->health--;
-			break;
+		case Command::move:
+		{
+			board.move_piece(op.x, op.y, tr.dir, for_black);
+		}
+		break;
+		case Command::attack:
+		{
+			switch (tr.dir)
+			{
+				case Board::Left:
+					f = &board.get_opp(board.gs, op.x - 1, op.y + 0, true, true);
+					f->health--;
+					break;
+				case Board::Right:
+					f = &board.get_opp(board.gs, op.x + 1, op.y + 0, true, true);
+					f->health--;
+					break;
+				case Board::Down:
+					f = &board.get_opp(board.gs, op.x + 0, op.y + 1, true, true);
+					f->health--;
+					break;
+				case Board::Up:
+					f = &board.get_opp(board.gs, op.x + 0, op.y - 1, true, true);
+					f->health--;
+					break;
+			}
+		}
+		break;
 	}
 	if (f && f->health <= 0)
 	{
 		f->type = Operator::Dead;
 		board.clear_cell(f->x, f->y);
 	}
+	move_number++;
 }
 
 Command InferCommand(int op_id, bool for_black, int x, int y)
@@ -474,24 +516,24 @@ Command InferCommand(int op_id, bool for_black, int x, int y)
 	{
 		if (board.get_cell(x, y) == Board::Walkable)
 		{
-			if (x == op.x + 1 && y == op.y) return Command(0, Command::mr, op_id);
-			else if (x == op.x - 1 && y == op.y) return Command(0, Command::ml, op_id);
-			else if (x == op.x && y == op.y - 1) return Command(0, Command::mu, op_id);
-			else if (x == op.x && y == op.y + 1) return Command(0, Command::md, op_id);
+			if (x == op.x - 1 && y == op.y) return Command(0, Command::move, Board::Left, op_id);
+			else if (x == op.x + 1 && y == op.y) return Command(0, Command::move, Board::Right, op_id);
+			else if (x == op.x && y == op.y - 1) return Command(0, Command::move, Board::Up, op_id);
+			else if (x == op.x && y == op.y + 1) return Command(0, Command::move, Board::Down, op_id);
 		}
 		else
 		{
 			const Operator& enemy = board.get_opp(board.gs, x, y, for_black, !for_black);
 			if (enemy.type != Operator::Dead)
 			{
-				if (x == op.x + 1 && y == op.y) return Command(0, Command::ar, op_id);
-				else if (x == op.x - 1 && y == op.y) return Command(0, Command::al, op_id);
-				else if (x == op.x && y == op.y - 1) return Command(0, Command::au, op_id);
-				else if (x == op.x && y == op.y + 1) return Command(0, Command::ad, op_id);
+				if (x == op.x - 1 && y == op.y) return Command(0, Command::attack, Board::Left, op_id);
+				else if (x == op.x + 1 && y == op.y) return Command(0, Command::attack, Board::Right, op_id);
+				else if (x == op.x && y == op.y - 1) return Command(0, Command::attack, Board::Up, op_id);
+				else if (x == op.x && y == op.y + 1) return Command(0, Command::attack, Board::Down, op_id);
 			}
 		}
 	}
-	return Command(0, Command::end, -1);
+	return Command(0, Command::end, Board::NoDir,  -1);
 }
 
 void Application::Draw(float time)
@@ -501,6 +543,10 @@ void Application::Draw(float time)
 	ImGui::Begin("Board");
 
 	ImGui::Columns(2);
+
+	static Command enemy_cmd(0);
+
+	bool do_move = false;
 
 	for (int i = 0; i < board.size.y; ++i)
 	{
@@ -546,6 +592,7 @@ void Application::Draw(float time)
 							{
 								MakeMove(cmd, false);
 								for_black = !for_black;
+								do_move = true;
 							}
 						}
 					}
@@ -563,16 +610,64 @@ void Application::Draw(float time)
 
 	ImGui::Text("Evaluation: %d", Evaluate(board, board.gs, false));
 
-	if (ImGui::Button("Make move") || for_black)
+	static int depth = 3;
+	ImGui::InputInt("Depth", &depth);
+
+	if (ImGui::Button("Skip"))
 	{
-		Command tr = TraverseState(board, board.gs, for_black, 12);
-		MakeMove(tr, for_black);
 		for_black = !for_black;
+		do_move = true;
+	}
+	if (ImGui::Button("Make move") || (for_black && do_move))
+	{
+		enemy_cmd = TraverseState(board, board.gs, for_black, depth);
+		MakeMove(enemy_cmd, for_black);
+		for_black = !for_black;
+		do_move = false;
 	}
 
-	ImGui::End();
+	switch (enemy_cmd.action)
+	{
+		case Command::move:
+		{
+			ImGui::Text("Enemy action: move");
+		}
+		break;
+		case Command::attack:
+		{
+			ImGui::Text("Enemy action: attack");
+		}
+		break;
+	}
 
+	switch (enemy_cmd.dir)
+	{
+		case Board::Left:
+			ImGui::Text("Enemy dir: Left");
+			break;
+		case Board::Right:
+			ImGui::Text("Enemy dir: Right");
+			break;
+		case Board::Down:
+			ImGui::Text("Enemy dir: Down");
+			break;
+		case Board::Up:
+			ImGui::Text("Enemy dir: Up");
+			break;
+	}
+	int player_health = 0;
+	for (int i = 0; i < board.w_ops_count; ++i)
+	{
+		player_health += board.gs.white_ops[i].get_cost();
+	}
+	int enemy_health = 0;
+	for (int i = 0; i < board.b_ops_count; ++i)
+	{
+		enemy_health += board.gs.black_ops[i].get_cost();
+	}
+	ImGui::Text("Health: %d : %d", player_health, enemy_health);
 	// ImGui::ShowDemoWindow();
+	ImGui::End();
 }
 
 void Application::Resize(int width, int height, int display_w, int display_h)
