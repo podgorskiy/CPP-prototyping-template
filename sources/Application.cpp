@@ -10,7 +10,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <bits/stdc++.h>
 
-int move_number = 0;
 
 #pragma pack(push,1)
 struct Operator
@@ -57,7 +56,8 @@ enum
 {
 	MAX_OPS = 12,
 	MAX_MOVES = 4,
-	MAX_SUCCESSORS = MAX_OPS * MAX_MOVES
+	MAX_SUCCESSORS = MAX_OPS * MAX_MOVES,
+	MAX_DEPTH = 30,
 };
 
 
@@ -121,6 +121,8 @@ struct Board
 
 	Operator white_ops[MAX_OPS];
 	Operator black_ops[MAX_OPS];
+
+	stack_buffer<std::pair<Operator, int>, MAX_DEPTH> op_history;
 
 	bool valid_coord(int x, int y) const { return !(x < 0 || y < 0 || x >= size.x || y >= size.y); }
 	const int get_cell(int x, int y) const { return valid_coord(x, y) ? cell_state[x + y * size.x] : Block; }
@@ -229,7 +231,9 @@ Board::state get_cell_type(char c)
 int sqr(int x) {return x * x;}
 
 
-int Evaluate(const Board& board, Turn turn)
+int leaves = 0;
+
+int Evaluate(const Board& board, Turn turn, int depth)
 {
 	int ew = 0;
 	for (int i = 0; i < board.w_ops_count; ++i)
@@ -257,7 +261,9 @@ int Evaluate(const Board& board, Turn turn)
 	if (ew == 0) ew = -1000 * 100;
 	if (eb == 0) eb = 1000 * 100;
 	int e = ew + eb - distance;
-	e += -move_number;
+	e += depth;
+
+	++leaves;
 	return (turn == WhitePLay ? e : -e);
 
 	return -distance;
@@ -379,36 +385,30 @@ void GenerateMoves(const Board& board, Turn turn, stack_buffer<Command, MAX_SUCC
 }
 
 
-Command AlphaBetaNegamax(Board& board, int alpha, int betta, Turn turn, int depth)
+Command AlphaBetaNegamax(Board& board, int depth, int alpha, int betta, Turn turn);
+
+
+void DoMove(Board& board, Command cmd, Turn turn)
 {
-	if (depth == 0 || game_over(board))
+	Operator* ops = turn == WhitePLay ? board.white_ops : board.black_ops;
+	Operator* enemy_ops = turn == BlackPlay ? board.white_ops : board.black_ops;
+	Operator& op = ops[cmd.op_id];
+	switch (cmd.action)
 	{
-		return Command(Evaluate(board, turn));
-	}
-
-	stack_buffer<Command, MAX_SUCCESSORS> successors;
-	GenerateMoves(board, turn, successors);
-
-	if (successors.empty())
-	{
-		return Command(Evaluate(board, turn));
-	}
-
-	Command value;
-
-	for(typename stack_buffer<Command, MAX_SUCCESSORS>::size_type i = 0, l = successors.size(); i < l; ++i)
-	{
-		Command& cmd = successors[i];
-		Operator* ops = turn == WhitePLay ? board.white_ops : board.black_ops;
-		Operator& op = ops[cmd.op_id];
-		if (cmd.action == Command::attack)
+		case Command::move:
+		{
+			board.move_piece(op.x, op.y, cmd.dir, turn);
+		}
+		break;
+		case Command::attack:
 		{
 			int x = op.x;
 			int y = op.y;
 			Board::MoveCoord(x, y, cmd.dir);
-			auto& enemy_opp = board.get_opp(x, y, turn == BlackPlay, turn == WhitePLay);
-			Operator backup = enemy_opp;
-			int id = (board.get_cell(backup.x, backup.y) & 0xF00u) >> 8u;
+			int enemy_opp_id = board.get_opp_id(x, y, turn == BlackPlay, turn == WhitePLay);
+			assert(enemy_opp_id != -1);
+			auto& enemy_opp = enemy_ops[enemy_opp_id];
+			board.op_history.emplace_back(enemy_opp, enemy_opp_id);
 
 			enemy_opp.health -= 1;
 			if (enemy_opp.health <= 0)
@@ -417,22 +417,67 @@ Command AlphaBetaNegamax(Board& board, int alpha, int betta, Turn turn, int dept
 				enemy_opp.type = Operator::Dead;
 				board.clear_cell(enemy_opp.x, enemy_opp.y);
 			}
-
-			cmd.new_eval = -AlphaBetaNegamax(board, -betta, -alpha, Next(turn), depth - 1).new_eval;
-			enemy_opp = backup;
-			board.set_cell_op(enemy_opp.x, enemy_opp.y, id, Next(turn));
 		}
-		else if (cmd.action == Command::move)
+		break;
+	}
+}
+
+
+void UndoMove(Board& board, Command cmd, Turn turn)
+{
+	Operator* ops = turn == WhitePLay ? board.white_ops : board.black_ops;
+	Operator* enemy_ops = turn == BlackPlay ? board.white_ops : board.black_ops;
+	Operator& op = ops[cmd.op_id];
+	switch (cmd.action)
+	{
+		case Command::move:
 		{
-			board.move_piece(op.x, op.y, cmd.dir, turn);
-			cmd.new_eval = -AlphaBetaNegamax(board, -betta, -alpha, Next(turn), depth - 1).new_eval;
 			board.move_piece(op.x, op.y, Board::GetOpposit(cmd.dir), turn);
 		}
+		break;
+		case Command::attack:
+		{
+			auto& backup = board.op_history.back();
+			auto& enemy_opp = enemy_ops[backup.second];
+			enemy_opp = backup.first;
+			board.set_cell_op(enemy_opp.x, enemy_opp.y, backup.second, Next(turn));
+			board.op_history.pop_back();
+		}
+		break;
+	}
+}
+
+
+Command AlphaBetaNegamax(Board& board, int depth, int alpha, int betta, Turn turn)
+{
+	if (depth == 0 || game_over(board))
+	{
+		return Command(Evaluate(board, turn, depth));
+	}
+
+	stack_buffer<Command, MAX_SUCCESSORS> successors;
+	GenerateMoves(board, turn, successors);
+
+	if (successors.empty())
+	{
+		return Command(Evaluate(board, turn, depth));
+	}
+
+	Command value;
+
+	for(typename stack_buffer<Command, MAX_SUCCESSORS>::size_type i = 0, l = successors.size(); i < l; ++i)
+	{
+		Command& cmd = successors[i];
+
+		DoMove(board, cmd, turn);
+		cmd.new_eval = -AlphaBetaNegamax(board, depth - 1, -betta, -alpha, Next(turn)).new_eval;
+		UndoMove(board, cmd, turn);
+
 		value = std::max(value, cmd);
 		alpha = std::max(alpha, value.new_eval);
 		if (alpha > betta)
 		{
-			return value;
+			// return value;
 		}
 	}
 
@@ -488,36 +533,6 @@ Application::Application()
 
 Application::~Application()
 {
-}
-
-void MakeMove(Command tr, Turn turn)
-{
-	Operator* ops = turn == WhitePLay ? board.white_ops : board.black_ops;
-	Operator& op = ops[tr.op_id];
-	Operator* f = nullptr;
-	switch (tr.action)
-	{
-		case Command::move:
-		{
-			board.move_piece(op.x, op.y, tr.dir, turn);
-		}
-		break;
-		case Command::attack:
-		{
-			int x = op.x;
-			int y = op.y;
-			Board::MoveCoord(x, y, tr.dir);
-			f = &board.get_opp(x, y, true, true);
-			f->health--;
-		}
-		break;
-	}
-	if (f && f->health <= 0)
-	{
-		f->type = Operator::Dead;
-		board.clear_cell(f->x, f->y);
-	}
-	move_number++;
 }
 
 Command InferCommand(int op_id, Turn turn, int x, int y)
@@ -602,7 +617,7 @@ void Application::Draw(float time)
 						{
 							if (ImGui::AcceptDragDropPayload("op"))
 							{
-								MakeMove(cmd, turn);
+								DoMove(board, cmd, turn);
 								turn = Next(turn);
 								do_move = true;
 							}
@@ -620,7 +635,9 @@ void Application::Draw(float time)
 
 	ImGui::NextColumn();
 
-	ImGui::Text("Evaluation: %d", Evaluate(board, WhitePLay));
+	int t = leaves;
+	ImGui::Text("Evaluation: %d", Evaluate(board, WhitePLay, 0));
+	leaves = t;
 
 	static int depth = 6;
 	ImGui::InputInt("Depth", &depth);
@@ -634,11 +651,18 @@ void Application::Draw(float time)
 	{
 		int alpha = INT_MIN;
 		int beta = INT_MAX;
-		enemy_cmd = AlphaBetaNegamax(board, alpha, beta, turn, depth);
-		MakeMove(enemy_cmd, turn);
+		leaves = 0;
+		//if (turn == BlackPlay)
+		//	std::swap(alpha, beta);
+
+		enemy_cmd = AlphaBetaNegamax(board, depth, alpha, beta, turn);
+
+		DoMove(board, enemy_cmd, turn);
 		turn = Next(turn);
 		do_move = false;
 	}
+
+	ImGui::Text("Evaluations: %d", leaves);
 
 	switch (enemy_cmd.action)
 	{
