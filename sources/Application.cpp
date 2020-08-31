@@ -246,11 +246,28 @@ int Evaluate(const Board& board, const GameState& gs, Turn turn)
 		}
 	}
 
-	int e = ew + eb + distance;
-	e += move_number;
+	if (ew == 0) ew = -1000 * 100;
+	if (eb == 0) eb = 1000 * 100;
+	int e = ew + eb - distance;
+	e += -move_number;
 	return (turn == WhitePLay ? e : -e);
 
 	return -distance;
+}
+
+bool game_over(const Board& board, const GameState& gs)
+{
+	int ew = 0;
+	for (int i = 0; i < board.w_ops_count; ++i)
+	{
+		ew += gs.white_ops[i].get_cost();
+	}
+	int eb = 0;
+	for (int i = 0; i < board.b_ops_count; ++i)
+	{
+		eb -= gs.black_ops[i].get_cost();
+	}
+	return ew == 0 || eb == 0;
 }
 
 struct Command
@@ -309,12 +326,13 @@ typename C::size_type argmaximum(const C& v)
 }
 
 
-Command TraverseState(Board& board, GameState& gs, Turn turn, int depth)
+Command TraverseState(Board& board, GameState& gs, int alpha, int betta, Turn turn, int depth)
 {
-	if (depth == 0)
+	if (depth == 0 || game_over(board, gs))
 	{
 		return Command(Evaluate(board, gs, turn));
 	}
+
 	Operator* ops = turn == WhitePLay ? gs.white_ops  : gs.black_ops;
 	int count = turn == WhitePLay ? board.w_ops_count  : board.b_ops_count;
 
@@ -349,10 +367,13 @@ Command TraverseState(Board& board, GameState& gs, Turn turn, int depth)
 					board.clear_cell(enemy_opp.x, enemy_opp.y);
 				}
 
-				int eval = -TraverseState(board, gs, Next(turn), depth-1).new_eval;
-				successors.emplace_back(eval, Command::attack, dir, i);
+				int eval = -TraverseState(board, gs, -betta, -alpha, Next(turn), depth-1).new_eval;
 				enemy_opp = backup;
 				board.set_cell_op(enemy_opp.x, enemy_opp.y, id, Next(turn));
+				alpha = std::max(alpha, eval);
+				if (alpha > betta)
+					goto end;
+				successors.emplace_back(eval, Command::attack, dir, i);
 			}
 		}
 
@@ -364,13 +385,17 @@ Command TraverseState(Board& board, GameState& gs, Turn turn, int depth)
 			if (board.get_cell(op.x, op.y, dir) == Board::Walkable)
 			{
 				board.move_piece(op.x, op.y, dir, turn);
-				int eval = -TraverseState(board, gs, Next(turn), depth-1).new_eval;
-				successors.emplace_back(eval, Command::move, dir, i);
+				int eval = -TraverseState(board, gs, -betta, -alpha, Next(turn), depth-1).new_eval;
 				board.move_piece(op.x, op.y, Board::GetOpposit(dir), turn);
+				alpha = std::max(alpha, eval);
+				if (alpha > betta)
+					goto end;
+				successors.emplace_back(eval, Command::move, dir, i);
 			}
 		}
 	}
 
+end:
 	if (successors.empty())
 	{
 		return Command(Evaluate(board, gs, turn));
@@ -572,7 +597,9 @@ void Application::Draw(float time)
 	}
 	if (ImGui::Button("Make move") || (turn == BlackPlay && do_move))
 	{
-		enemy_cmd = TraverseState(board, board.gs, turn, depth);
+		int alpha = INT_MIN;
+		int beta = INT_MAX;
+		enemy_cmd = TraverseState(board, board.gs, alpha, beta, turn, depth);
 		MakeMove(enemy_cmd, turn);
 		turn = Next(turn);
 		do_move = false;
