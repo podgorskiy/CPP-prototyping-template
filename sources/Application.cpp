@@ -45,6 +45,39 @@ struct Operator
 
 Operator noop({Operator::Dead, 0, 0, 0, 0, 0});
 
+enum Direction
+{
+	Left,
+	Right,
+	Down,
+	Up,
+	End,
+	NoDir = End
+};
+
+struct Command
+{
+	enum Action
+	{
+		move,
+		attack,
+		end
+	};
+	int new_eval = 0;
+	Action action = end;
+	Direction dir = NoDir;
+	int op_id = -1;
+
+	Command(): new_eval(INT_MIN), action(end), op_id(-1) {}
+	Command(int new_eval): new_eval(new_eval), action(end), op_id(-1) {}
+	Command(int new_eval, Action action, Direction dir, int op_id): new_eval(new_eval), action(action), dir(dir), op_id(op_id) {}
+
+	int operator ()() const { return new_eval; }
+	bool operator < (const Command& other) const { return new_eval < other.new_eval; }
+	Command operator -() { return Command(-new_eval, action, dir, op_id); };
+};
+
+
 
 enum Turn
 {
@@ -80,16 +113,6 @@ struct Board
 		HasW = 0x1000,
 		HasB = 0x2000,
 	};
-	enum Direction
-	{
-		Left,
-		Right,
-		Down,
-		Up,
-		End,
-		NoDir = End
-	};
-
 	static Direction GetOpposit(Direction dir)
 	{
 		switch(dir)
@@ -123,6 +146,7 @@ struct Board
 	Operator black_ops[MAX_OPS];
 
 	stack_buffer<std::pair<Operator, int>, MAX_DEPTH> op_history;
+	buffer<std::pair<Command, Turn>> cmd_history;
 
 	bool valid_coord(int x, int y) const { return !(x < 0 || y < 0 || x >= size.x || y >= size.y); }
 	const int get_cell(int x, int y) const { return valid_coord(x, y) ? cell_state[x + y * size.x] : Block; }
@@ -284,29 +308,6 @@ bool game_over(const Board& board)
 	return ew == 0 || eb == 0;
 }
 
-struct Command
-{
-	enum Action
-	{
-		move,
-		attack,
-		end
-	};
-	int new_eval = 0;
-	Action action = end;
-	Board::Direction dir = Board::NoDir;
-	int op_id = -1;
-
-	Command(): new_eval(INT_MIN), action(end), op_id(-1) {}
-	Command(int new_eval): new_eval(new_eval), action(end), op_id(-1) {}
-	Command(int new_eval, Action action, Board::Direction dir, int op_id): new_eval(new_eval), action(action), dir(dir), op_id(op_id) {}
-
-	int operator ()() const { return new_eval; }
-	bool operator < (const Command& other) const { return new_eval < other.new_eval; }
-	Command operator -() { return Command(-new_eval, action, dir, op_id); };
-};
-
-
 template<typename C>
 typename C::value_type maximum(const C& v)
 {
@@ -357,9 +358,9 @@ void GenerateMoves(const Board& board, Turn turn, stack_buffer<Command, MAX_SUCC
 		}
 
 		// attack
-		for (int _dir = 0; _dir < Board::End; ++_dir)
+		for (int _dir = 0; _dir < End; ++_dir)
 		{
-			Board::Direction dir = (Board::Direction) _dir;
+			Direction dir = (Direction) _dir;
 			int x = op.x;
 			int y = op.y;
 			Board::MoveCoord(x, y, dir);
@@ -372,9 +373,9 @@ void GenerateMoves(const Board& board, Turn turn, stack_buffer<Command, MAX_SUCC
 		}
 
 		// move
-		for (int _dir = 0; _dir < Board::End; ++_dir)
+		for (int _dir = 0; _dir < End; ++_dir)
 		{
-			Board::Direction dir = (Board::Direction) _dir;
+			Direction dir = (Direction) _dir;
 
 			if (board.get_cell(op.x, op.y, dir) == Board::Walkable)
 			{
@@ -388,11 +389,13 @@ void GenerateMoves(const Board& board, Turn turn, stack_buffer<Command, MAX_SUCC
 Command AlphaBetaNegamax(Board& board, int depth, int alpha, int betta, Turn turn);
 
 
-void DoMove(Board& board, Command cmd, Turn turn)
+void DoMove(Board& board, Command cmd, Turn turn, bool final=false)
 {
 	Operator* ops = turn == WhitePLay ? board.white_ops : board.black_ops;
 	Operator* enemy_ops = turn == BlackPlay ? board.white_ops : board.black_ops;
 	Operator& op = ops[cmd.op_id];
+	if (!final)
+		board.cmd_history.emplace_back(cmd, turn);
 	switch (cmd.action)
 	{
 		case Command::move:
@@ -408,7 +411,8 @@ void DoMove(Board& board, Command cmd, Turn turn)
 			int enemy_opp_id = board.get_opp_id(x, y, turn == BlackPlay, turn == WhitePLay);
 			assert(enemy_opp_id != -1);
 			auto& enemy_opp = enemy_ops[enemy_opp_id];
-			board.op_history.emplace_back(enemy_opp, enemy_opp_id);
+			if (!final)
+				board.op_history.emplace_back(enemy_opp, enemy_opp_id);
 
 			enemy_opp.health -= 1;
 			if (enemy_opp.health <= 0)
@@ -423,11 +427,19 @@ void DoMove(Board& board, Command cmd, Turn turn)
 }
 
 
-void UndoMove(Board& board, Command cmd, Turn turn)
+void UndoMove(Board& board)
 {
+	if (board.cmd_history.empty())
+		return;
+	auto& _cmd = board.cmd_history.back();
+	Command cmd = _cmd.first;
+	Turn turn = _cmd.second;
+	board.cmd_history.pop_back();
+
 	Operator* ops = turn == WhitePLay ? board.white_ops : board.black_ops;
 	Operator* enemy_ops = turn == BlackPlay ? board.white_ops : board.black_ops;
 	Operator& op = ops[cmd.op_id];
+
 	switch (cmd.action)
 	{
 		case Command::move:
@@ -469,9 +481,9 @@ Command AlphaBetaNegamax(Board& board, int depth, int alpha, int betta, Turn tur
 	{
 		Command& cmd = successors[i];
 
-		DoMove(board, cmd, turn);
+		DoMove(board, cmd, turn, false);
 		cmd.new_eval = -AlphaBetaNegamax(board, depth - 1, -betta, -alpha, Next(turn)).new_eval;
-		UndoMove(board, cmd, turn);
+		UndoMove(board);
 
 		value = std::max(value, cmd);
 		alpha = std::max(alpha, value.new_eval);
@@ -543,24 +555,24 @@ Command InferCommand(int op_id, Turn turn, int x, int y)
 	{
 		if (board.get_cell(x, y) == Board::Walkable)
 		{
-			if (x == op.x - 1 && y == op.y) return Command(0, Command::move, Board::Left, op_id);
-			else if (x == op.x + 1 && y == op.y) return Command(0, Command::move, Board::Right, op_id);
-			else if (x == op.x && y == op.y - 1) return Command(0, Command::move, Board::Up, op_id);
-			else if (x == op.x && y == op.y + 1) return Command(0, Command::move, Board::Down, op_id);
+			if (x == op.x - 1 && y == op.y) return Command(0, Command::move, Left, op_id);
+			else if (x == op.x + 1 && y == op.y) return Command(0, Command::move, Right, op_id);
+			else if (x == op.x && y == op.y - 1) return Command(0, Command::move, Up, op_id);
+			else if (x == op.x && y == op.y + 1) return Command(0, Command::move, Down, op_id);
 		}
 		else
 		{
 			const Operator& enemy = board.get_opp(x, y, turn == BlackPlay, turn == WhitePLay);
 			if (enemy.type != Operator::Dead)
 			{
-				if (x == op.x - 1 && y == op.y) return Command(0, Command::attack, Board::Left, op_id);
-				else if (x == op.x + 1 && y == op.y) return Command(0, Command::attack, Board::Right, op_id);
-				else if (x == op.x && y == op.y - 1) return Command(0, Command::attack, Board::Up, op_id);
-				else if (x == op.x && y == op.y + 1) return Command(0, Command::attack, Board::Down, op_id);
+				if (x == op.x - 1 && y == op.y) return Command(0, Command::attack, Left, op_id);
+				else if (x == op.x + 1 && y == op.y) return Command(0, Command::attack, Right, op_id);
+				else if (x == op.x && y == op.y - 1) return Command(0, Command::attack, Up, op_id);
+				else if (x == op.x && y == op.y + 1) return Command(0, Command::attack, Down, op_id);
 			}
 		}
 	}
-	return Command(0, Command::end, Board::NoDir,  -1);
+	return Command(0, Command::end, NoDir,  -1);
 }
 
 void Application::Draw(float time)
@@ -617,7 +629,7 @@ void Application::Draw(float time)
 						{
 							if (ImGui::AcceptDragDropPayload("op"))
 							{
-								DoMove(board, cmd, turn);
+								DoMove(board, cmd, turn, true);
 								turn = Next(turn);
 								do_move = true;
 							}
@@ -659,7 +671,12 @@ void Application::Draw(float time)
 
 		DoMove(board, enemy_cmd, turn);
 		turn = Next(turn);
-		do_move = false;
+	}
+
+	if (ImGui::Button("Undo move"))
+	{
+		UndoMove(board);
+		turn = Next(turn);
 	}
 
 	ImGui::Text("Evaluations: %d", leaves);
@@ -680,16 +697,16 @@ void Application::Draw(float time)
 
 	switch (enemy_cmd.dir)
 	{
-		case Board::Left:
+		case Left:
 			ImGui::Text("Enemy dir: Left");
 			break;
-		case Board::Right:
+		case Right:
 			ImGui::Text("Enemy dir: Right");
 			break;
-		case Board::Down:
+		case Down:
 			ImGui::Text("Enemy dir: Down");
 			break;
-		case Board::Up:
+		case Up:
 			ImGui::Text("Enemy dir: Up");
 			break;
 	}
