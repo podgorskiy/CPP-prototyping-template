@@ -83,8 +83,22 @@ struct Board
 		Right,
 		Down,
 		Up,
-		NoDir
+		End,
+		NoDir = End
 	};
+
+	static Direction GetOpposit(Direction dir)
+	{
+		switch(dir)
+		{
+			case Left: return Right;
+			case Right: return Left;
+			case Down: return Up;
+			case Up: return Down;
+			default:
+				return NoDir;
+		}
+	}
 
 	static void MoveCoord(int& x, int& y, Direction dir)
 	{
@@ -104,6 +118,13 @@ struct Board
 
 	bool valid_coord(int x, int y) const { return !(x < 0 || y < 0 || x >= size.x || y >= size.y); }
 	const int get_cell(int x, int y) const { return valid_coord(x, y) ? cell_state[x + y * size.x] : Block; }
+
+	const int get_cell(int x, int y, Direction dir) const
+	{
+		MoveCoord(x, y, dir);
+		return valid_coord(x, y) ? cell_state[x + y * size.x] : Block;
+	}
+
 	void set_cell(int x, int y, int n) { if (valid_coord(x, y)) cell_state[x + y * size.x] = n; }
 	void set_cell_and_or(int x, int y, int a, int o) { if (valid_coord(x, y)) { auto& c = cell_state[x + y * size.x]; c &= a; c |= o; }}
 	void clear_cell(int x, int y) { set_cell_and_or(x, y, 0xFF, 0); }
@@ -277,114 +298,45 @@ Command TraverseState(Board& board, GameState& gs, Turn turn, int depth)
 
 		int ev[2][4] = {{-10000000, -10000000, -10000000, -10000000}, {-10000000, -10000000, -10000000, -10000000}};
 
-		auto& opl = board.get_opp(gs, op.x - 1, op.y + 0, turn == BlackPlay, turn == WhitePLay);
-		auto& opr = board.get_opp(gs, op.x + 1, op.y + 0, turn == BlackPlay, turn == WhitePLay);
-		auto& opd = board.get_opp(gs, op.x + 0, op.y + 1, turn == BlackPlay, turn == WhitePLay);
-		auto& opu = board.get_opp(gs, op.x + 0, op.y - 1, turn == BlackPlay, turn == WhitePLay);
-
-		// attack left
-		if (opl.type != 0)
+		// attack
+		for (int _dir = 0; _dir < Board::End; ++_dir)
 		{
-			Operator backup = opl;
-			int id = (board.get_cell(backup.x, backup.y) & 0xF00) >> 8;
+			Board::Direction dir = (Board::Direction)_dir;
+			int x = op.x;
+			int y = op.y;
+			Board::MoveCoord(x, y, dir);
+			auto& enemy_opp = board.get_opp(gs, x, y, turn == BlackPlay, turn == WhitePLay);
 
-			opl.health -= 1;
-			if (opl.health <= 0)
+			if (enemy_opp.type != 0)
 			{
-				opl.health = 0;
-				opl.type = Operator::Dead;
-				board.clear_cell(opl.x, opl.y);
-			}
+				Operator backup = enemy_opp;
+				int id = (board.get_cell(backup.x, backup.y) & 0xF00u) >> 8u;
 
-			ev[Command::attack][Board::Left] = -TraverseState(board, gs, Next(turn), depth-1).new_eval;
-			opl = backup;
-			board.set_cell_op(opl.x, opl.y, id, Next(turn));
+				enemy_opp.health -= 1;
+				if (enemy_opp.health <= 0)
+				{
+					enemy_opp.health = 0;
+					enemy_opp.type = Operator::Dead;
+					board.clear_cell(enemy_opp.x, enemy_opp.y);
+				}
+
+				ev[Command::attack][dir] = -TraverseState(board, gs, Next(turn), depth-1).new_eval;
+				enemy_opp = backup;
+				board.set_cell_op(enemy_opp.x, enemy_opp.y, id, Next(turn));
+			}
 		}
 
-		// attack right
-		if (opr.type != 0)
+		// move
+		for (int _dir = 0; _dir < Board::End; ++_dir)
 		{
-			Operator backup = opr;
-			int id = (board.get_cell(backup.x, backup.y) & 0xF00) >> 8;
-			opr.health -= 1;
-			if (opr.health <= 0)
+			Board::Direction dir = (Board::Direction)_dir;
+
+			if (board.get_cell(op.x, op.y, dir) == Board::Walkable)
 			{
-				opr.health = 0;
-				opr.type = Operator::Dead;
-				board.clear_cell(opr.x, opr.y);
+				board.move_piece(op.x, op.y, dir, turn);
+				ev[Command::move][dir] = -TraverseState(board, gs, Next(turn), depth-1).new_eval;
+				board.move_piece(op.x, op.y, Board::GetOpposit(dir), turn);
 			}
-
-			ev[Command::attack][Board::Right] = -TraverseState(board, gs, Next(turn), depth-1).new_eval;
-			opr = backup;
-			board.set_cell_op(opr.x, opr.y, id, Next(turn));
-		}
-
-		// attack down
-		if (opd.type != 0)
-		{
-			Operator backup = opd;
-			int id = (board.get_cell(backup.x, backup.y) & 0xF00) >> 8;
-			opd.health -= 1;
-			if (opd.health <= 0)
-			{
-				opd.health = 0;
-				opd.type = Operator::Dead;
-				board.clear_cell(opd.x, opd.y);
-			}
-
-			ev[Command::attack][Board::Down] = -TraverseState(board, gs, Next(turn), depth-1).new_eval;
-			opd = backup;
-			board.set_cell_op(opd.x, opd.y, id, Next(turn));
-		}
-
-		// attack up
-		if (opu.type != 0)
-		{
-			Operator backup = opu;
-			int id = (board.get_cell(backup.x, backup.y) & 0xF00) >> 8;
-			opu.health -= 1;
-			if (opu.health <= 0)
-			{
-				opu.health = 0;
-				opu.type = Operator::Dead;
-				board.clear_cell(opu.x, opu.y);
-			}
-
-			ev[Command::attack][Board::Up] =  -TraverseState(board, gs, Next(turn), depth-1).new_eval;
-			opu = backup;
-			board.set_cell_op(opu.x, opu.y, id, Next(turn));
-		}
-
-		// move left
-		if (board.get_cell(op.x - 1, op.y) == Board::Walkable)
-		{
-			board.move_piece(op.x, op.y, Board::Left, turn);
-			ev[Command::move][Board::Left] = -TraverseState(board, gs, Next(turn), depth-1).new_eval;
-			board.move_piece(op.x, op.y, Board::Right, turn);
-		}
-
-		// move right
-		if (board.get_cell(op.x + 1, op.y) == Board::Walkable)
-		{
-			board.move_piece(op.x, op.y, Board::Right, turn);
-			ev[Command::move][Board::Right] = -TraverseState(board, gs, Next(turn), depth-1).new_eval;
-			board.move_piece(op.x, op.y, Board::Left, turn);
-		}
-
-		// move down
-		if (board.get_cell(op.x, op.y + 1) == Board::Walkable)
-		{
-			board.move_piece(op.x, op.y, Board::Down, turn);
-			ev[Command::move][Board::Down] = -TraverseState(board, gs, Next(turn), depth-1).new_eval;
-			board.move_piece(op.x, op.y, Board::Up, turn);
-		}
-
-		// move up
-		if (board.get_cell(op.x, op.y - 1) == Board::Walkable)
-		{
-			board.move_piece(op.x, op.y, Board::Up, turn);
-			ev[Command::move][Board::Up] = -TraverseState(board, gs, Next(turn), depth-1).new_eval;
-			board.move_piece(op.x, op.y, Board::Down, turn);
 		}
 
 		int max = ev[Command::move][Board::Left];
@@ -496,25 +448,11 @@ void MakeMove(Command tr, Turn turn)
 		break;
 		case Command::attack:
 		{
-			switch (tr.dir)
-			{
-				case Board::Left:
-					f = &board.get_opp(board.gs, op.x - 1, op.y + 0, true, true);
-					f->health--;
-					break;
-				case Board::Right:
-					f = &board.get_opp(board.gs, op.x + 1, op.y + 0, true, true);
-					f->health--;
-					break;
-				case Board::Down:
-					f = &board.get_opp(board.gs, op.x + 0, op.y + 1, true, true);
-					f->health--;
-					break;
-				case Board::Up:
-					f = &board.get_opp(board.gs, op.x + 0, op.y - 1, true, true);
-					f->health--;
-					break;
-			}
+			int x = op.x;
+			int y = op.y;
+			Board::MoveCoord(x, y, tr.dir);
+			f = &board.get_opp(board.gs, x, y, true, true);
+			f->health--;
 		}
 		break;
 	}
@@ -628,7 +566,7 @@ void Application::Draw(float time)
 
 	ImGui::Text("Evaluation: %d", Evaluate(board, board.gs, WhitePLay));
 
-	static int depth = 3;
+	static int depth = 5;
 	ImGui::InputInt("Depth", &depth);
 
 	if (ImGui::Button("Skip"))
