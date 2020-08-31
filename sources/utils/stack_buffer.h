@@ -4,10 +4,11 @@
 #include <string.h>
 #include <utility>
 #include <stdlib.h>
+#include <assert.h>
 
 
-template<typename T>
-class buffer
+template<typename T, int Size>
+class stack_buffer
 {
 public:
 	typedef size_t size_type;
@@ -23,27 +24,23 @@ public:
 	typedef pointer iterator;
 	typedef const_pointer const_iterator;
 
-    buffer( const buffer& ) = delete; // non construction-copyable
-    buffer& operator=( const buffer& ) = delete; // non copyable
+    stack_buffer( const stack_buffer& ) = delete; // non construction-copyable
+    stack_buffer& operator=( const stack_buffer& ) = delete; // non copyable
 
-	buffer(): m_data(nullptr), m_size(0), m_reserved(0)
+	stack_buffer(): m_size(0)
 	{}
 
-	buffer(pointer data, size_type size): m_data(nullptr), m_size(0), m_reserved(0)
+	stack_buffer(pointer data, size_type size): m_size(0)
 	{
 		if (data != nullptr)
 		{
-			m_data = static_cast<uint8_t*>(malloc(size * sizeof(T)));
 			memcpy(m_data, data, size);
-			m_reserved = size;
 			m_size = size;
 		}
 		else
 		{
-			m_data = static_cast<uint8_t*>(malloc(size * sizeof(T)));
-			memset(m_data, 0, sizeof(T) * size);
-			m_reserved = size;
 			m_size = size;
+			memset(m_data, 0, sizeof(T) * size);
 		}
 	}
 
@@ -92,7 +89,7 @@ public:
 	void pop_back() noexcept { --m_size; }
 
 	void clear() noexcept { m_size = 0; }
-	void safe_clear() noexcept { memset(m_data, 0, sizeof(T) * m_reserved); m_size = 0; }
+	void safe_clear() noexcept { memset(m_data, 0, sizeof(T) * Size); m_size = 0; }
 
 	void resize(size_type new_size)
     {
@@ -101,27 +98,11 @@ public:
 private:
 	bool _resize(size_type new_size)
 	{
-		if (new_size > m_reserved)
-		{
-			uint64_t v = new_size + 1;
-
-			v--;
-			v |= v >> 1U;
-			v |= v >> 2U;
-			v |= v >> 4U;
-			v |= v >> 8U;
-			v |= v >> 16U;
-			v |= v >> 32U;
-			v++;
-
-			m_reserved = static_cast<size_type>(v);
-			m_data = static_cast<pointer>(realloc(m_data, m_reserved * sizeof(value_type)));
-		}
+		assert(new_size <= Size);
 		m_size = new_size;
-		return m_data != nullptr;
+		return new_size <= Size;
 	}
 
-	pointer m_data;
+	value_type m_data[Size];
 	size_type m_size;
-	size_type m_reserved;
 };
