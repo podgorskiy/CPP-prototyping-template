@@ -45,6 +45,23 @@ struct Operator
 Operator noop({Operator::Dead, 0, 0, 0, 0, 0});
 
 
+enum Turn
+{
+	WhitePLay,
+	BlackPlay
+};
+
+Turn Next(Turn t)
+{
+	switch(t)
+	{
+		case WhitePLay: return BlackPlay;
+		case BlackPlay: return WhitePLay;
+	}
+	return (Turn)-1;
+}
+
+
 struct GameState
 {
 	Operator white_ops[12];
@@ -90,18 +107,18 @@ struct Board
 	void set_cell(int x, int y, int n) { if (valid_coord(x, y)) cell_state[x + y * size.x] = n; }
 	void set_cell_and_or(int x, int y, int a, int o) { if (valid_coord(x, y)) { auto& c = cell_state[x + y * size.x]; c &= a; c |= o; }}
 	void clear_cell(int x, int y) { set_cell_and_or(x, y, 0xFF, 0); }
-	void set_cell_op(int x, int y, int op_id, bool for_black) { set_cell_and_or(x, y, 0xFF, (op_id << 8) | (for_black ? Board::HasB:Board::HasW)); }
+	void set_cell_op(int x, int y, int op_id, Turn turn) { set_cell_and_or(x, y, 0xFF, (op_id << 8) | (turn == WhitePLay ? Board::HasW:Board::HasB)); }
 
-	void move_piece(int x, int y, Direction dir, bool for_black)
+	void move_piece(int x, int y, Direction dir, Turn turn)
 	{
-		int piece = get_opp_id(gs, x, y, !for_black, for_black);
+		int piece = get_opp_id(gs, x, y, turn == WhitePLay, turn == BlackPlay);
 		assert(piece != -1);
 		clear_cell(x, y);
 		MoveCoord(x, y, dir);
-		Operator* ops = !for_black ? gs.white_ops  : gs.black_ops;
+		Operator* ops = turn == WhitePLay ? gs.white_ops  : gs.black_ops;
 		ops[piece].x = x;
 		ops[piece].y = y;
-		set_cell_op(x, y, piece, for_black);
+		set_cell_op(x, y, piece, turn);
 	}
 
 	Operator& get_opp(GameState& gs, int x, int y, bool white, bool black) const
@@ -181,7 +198,7 @@ Board::state get_cell_type(char c)
 
 int sqr(int x) {return x * x;}
 
-int Evaluate(const Board& board, const GameState& gs, bool for_black)
+int Evaluate(const Board& board, const GameState& gs, Turn turn)
 {
 	int ew = 0;
 	for (int i = 0; i < board.w_ops_count; ++i)
@@ -210,7 +227,7 @@ int Evaluate(const Board& board, const GameState& gs, bool for_black)
 	if (eb == 0) eb = 1000000;
 	int e = ew + eb;// + distance;
 	e += -move_number;
-	return (for_black ? -e : e);
+	return (turn == WhitePLay ? e : -e);
 
 	return -distance;
 }
@@ -232,14 +249,14 @@ struct Command
 	Command(int new_eval, Action action, Board::Direction dir, int op_id): new_eval(new_eval), action(action), dir(dir), op_id(op_id) {}
 };
 
-Command TraverseState(Board& board, GameState& gs, bool for_black, int depth)
+Command TraverseState(Board& board, GameState& gs, Turn turn, int depth)
 {
 	if (depth == 0)
 	{
-		return Command(Evaluate(board, gs, for_black));
+		return Command(Evaluate(board, gs, turn));
 	}
-	Operator* ops = !for_black ? gs.white_ops  : gs.black_ops;
-	int count = !for_black ? board.w_ops_count  : board.b_ops_count;
+	Operator* ops = turn == WhitePLay ? gs.white_ops  : gs.black_ops;
+	int count = turn == WhitePLay ? board.w_ops_count  : board.b_ops_count;
 
 	int ev_action_for_op[12];
 	Board::Direction dir_for_op[12];
@@ -260,10 +277,10 @@ Command TraverseState(Board& board, GameState& gs, bool for_black, int depth)
 
 		int ev[2][4] = {{-10000000, -10000000, -10000000, -10000000}, {-10000000, -10000000, -10000000, -10000000}};
 
-		auto& opl = board.get_opp(gs, op.x - 1, op.y + 0, for_black, !for_black);
-		auto& opr = board.get_opp(gs, op.x + 1, op.y + 0, for_black, !for_black);
-		auto& opd = board.get_opp(gs, op.x + 0, op.y + 1, for_black, !for_black);
-		auto& opu = board.get_opp(gs, op.x + 0, op.y - 1, for_black, !for_black);
+		auto& opl = board.get_opp(gs, op.x - 1, op.y + 0, turn == BlackPlay, turn == WhitePLay);
+		auto& opr = board.get_opp(gs, op.x + 1, op.y + 0, turn == BlackPlay, turn == WhitePLay);
+		auto& opd = board.get_opp(gs, op.x + 0, op.y + 1, turn == BlackPlay, turn == WhitePLay);
+		auto& opu = board.get_opp(gs, op.x + 0, op.y - 1, turn == BlackPlay, turn == WhitePLay);
 
 		// attack left
 		if (opl.type != 0)
@@ -279,9 +296,9 @@ Command TraverseState(Board& board, GameState& gs, bool for_black, int depth)
 				board.clear_cell(opl.x, opl.y);
 			}
 
-			ev[Command::attack][Board::Left] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
+			ev[Command::attack][Board::Left] = -TraverseState(board, gs, Next(turn), depth-1).new_eval;
 			opl = backup;
-			board.set_cell_op(opl.x, opl.y, id, !for_black);
+			board.set_cell_op(opl.x, opl.y, id, Next(turn));
 		}
 
 		// attack right
@@ -297,9 +314,9 @@ Command TraverseState(Board& board, GameState& gs, bool for_black, int depth)
 				board.clear_cell(opr.x, opr.y);
 			}
 
-			ev[Command::attack][Board::Right] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
+			ev[Command::attack][Board::Right] = -TraverseState(board, gs, Next(turn), depth-1).new_eval;
 			opr = backup;
-			board.set_cell_op(opr.x, opr.y, id, !for_black);
+			board.set_cell_op(opr.x, opr.y, id, Next(turn));
 		}
 
 		// attack down
@@ -315,9 +332,9 @@ Command TraverseState(Board& board, GameState& gs, bool for_black, int depth)
 				board.clear_cell(opd.x, opd.y);
 			}
 
-			ev[Command::attack][Board::Down] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
+			ev[Command::attack][Board::Down] = -TraverseState(board, gs, Next(turn), depth-1).new_eval;
 			opd = backup;
-			board.set_cell_op(opd.x, opd.y, id, !for_black);
+			board.set_cell_op(opd.x, opd.y, id, Next(turn));
 		}
 
 		// attack up
@@ -333,41 +350,41 @@ Command TraverseState(Board& board, GameState& gs, bool for_black, int depth)
 				board.clear_cell(opu.x, opu.y);
 			}
 
-			ev[Command::attack][Board::Up] =  -TraverseState(board, gs, !for_black, depth-1).new_eval;
+			ev[Command::attack][Board::Up] =  -TraverseState(board, gs, Next(turn), depth-1).new_eval;
 			opu = backup;
-			board.set_cell_op(opu.x, opu.y, id, !for_black);
+			board.set_cell_op(opu.x, opu.y, id, Next(turn));
 		}
 
 		// move left
 		if (board.get_cell(op.x - 1, op.y) == Board::Walkable)
 		{
-			board.move_piece(op.x, op.y, Board::Left, for_black);
-			ev[Command::move][Board::Left] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
-			board.move_piece(op.x, op.y, Board::Right, for_black);
+			board.move_piece(op.x, op.y, Board::Left, turn);
+			ev[Command::move][Board::Left] = -TraverseState(board, gs, Next(turn), depth-1).new_eval;
+			board.move_piece(op.x, op.y, Board::Right, turn);
 		}
 
 		// move right
 		if (board.get_cell(op.x + 1, op.y) == Board::Walkable)
 		{
-			board.move_piece(op.x, op.y, Board::Right, for_black);
-			ev[Command::move][Board::Right] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
-			board.move_piece(op.x, op.y, Board::Left, for_black);
+			board.move_piece(op.x, op.y, Board::Right, turn);
+			ev[Command::move][Board::Right] = -TraverseState(board, gs, Next(turn), depth-1).new_eval;
+			board.move_piece(op.x, op.y, Board::Left, turn);
 		}
 
 		// move down
 		if (board.get_cell(op.x, op.y + 1) == Board::Walkable)
 		{
-			board.move_piece(op.x, op.y, Board::Down, for_black);
-			ev[Command::move][Board::Down] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
-			board.move_piece(op.x, op.y, Board::Up, for_black);
+			board.move_piece(op.x, op.y, Board::Down, turn);
+			ev[Command::move][Board::Down] = -TraverseState(board, gs, Next(turn), depth-1).new_eval;
+			board.move_piece(op.x, op.y, Board::Up, turn);
 		}
 
 		// move up
 		if (board.get_cell(op.x, op.y - 1) == Board::Walkable)
 		{
-			board.move_piece(op.x, op.y, Board::Up, for_black);
-			ev[Command::move][Board::Up] = -TraverseState(board, gs, !for_black, depth-1).new_eval;
-			board.move_piece(op.x, op.y, Board::Down, for_black);
+			board.move_piece(op.x, op.y, Board::Up, turn);
+			ev[Command::move][Board::Up] = -TraverseState(board, gs, Next(turn), depth-1).new_eval;
+			board.move_piece(op.x, op.y, Board::Down, turn);
 		}
 
 		int max = ev[Command::move][Board::Left];
@@ -393,7 +410,7 @@ Command TraverseState(Board& board, GameState& gs, bool for_black, int depth)
 
 	if (!has_alive)
 	{
-		return Command(Evaluate(board, gs, for_black));
+		return Command(Evaluate(board, gs, turn));
 	}
 
 	int max = ev_action_for_op[0];
@@ -465,16 +482,16 @@ Application::~Application()
 {
 }
 
-void MakeMove(Command tr, bool for_black)
+void MakeMove(Command tr, Turn turn)
 {
-	Operator* ops = !for_black ? board.gs.white_ops : board.gs.black_ops;
+	Operator* ops = turn == WhitePLay ? board.gs.white_ops : board.gs.black_ops;
 	Operator& op = ops[tr.op_id];
 	Operator* f = nullptr;
 	switch (tr.action)
 	{
 		case Command::move:
 		{
-			board.move_piece(op.x, op.y, tr.dir, for_black);
+			board.move_piece(op.x, op.y, tr.dir, turn);
 		}
 		break;
 		case Command::attack:
@@ -509,9 +526,9 @@ void MakeMove(Command tr, bool for_black)
 	move_number++;
 }
 
-Command InferCommand(int op_id, bool for_black, int x, int y)
+Command InferCommand(int op_id, Turn turn, int x, int y)
 {
-	Operator* ops = !for_black ? board.gs.white_ops : board.gs.black_ops;
+	Operator* ops = turn == WhitePLay ? board.gs.white_ops : board.gs.black_ops;
 	Operator& op = ops[op_id];
 	if (board.valid_coord(x, y))
 	{
@@ -524,7 +541,7 @@ Command InferCommand(int op_id, bool for_black, int x, int y)
 		}
 		else
 		{
-			const Operator& enemy = board.get_opp(board.gs, x, y, for_black, !for_black);
+			const Operator& enemy = board.get_opp(board.gs, x, y, turn == BlackPlay, turn == WhitePLay);
 			if (enemy.type != Operator::Dead)
 			{
 				if (x == op.x - 1 && y == op.y) return Command(0, Command::attack, Board::Left, op_id);
@@ -539,7 +556,7 @@ Command InferCommand(int op_id, bool for_black, int x, int y)
 
 void Application::Draw(float time)
 {
-	static bool for_black = false;
+	static Turn turn = WhitePLay;
 
 	ImGui::Begin("Board");
 
@@ -571,7 +588,7 @@ void Application::Draw(float time)
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0, 0.0, 0.0, 1.0));
 			ImGui::Button(labels[status], ImVec2(60, 60));
 
-			if (!for_black)
+			if (turn == WhitePLay)
 			{
 				int playable_op = board.get_opp_id(board.gs, j, i, true, false);
 				if (playable_op != -1 && ImGui::BeginDragDropSource())
@@ -586,13 +603,13 @@ void Application::Draw(float time)
 					if (payload)
 					{
 						int op_id = *((int*) (payload->Data));
-						Command cmd = InferCommand(op_id, false, j, i);
+						Command cmd = InferCommand(op_id, turn, j, i);
 						if (cmd.action != Command::end)
 						{
 							if (ImGui::AcceptDragDropPayload("op"))
 							{
-								MakeMove(cmd, false);
-								for_black = !for_black;
+								MakeMove(cmd, turn);
+								turn = Next(turn);
 								do_move = true;
 							}
 						}
@@ -609,21 +626,21 @@ void Application::Draw(float time)
 
 	ImGui::NextColumn();
 
-	ImGui::Text("Evaluation: %d", Evaluate(board, board.gs, false));
+	ImGui::Text("Evaluation: %d", Evaluate(board, board.gs, WhitePLay));
 
 	static int depth = 3;
 	ImGui::InputInt("Depth", &depth);
 
 	if (ImGui::Button("Skip"))
 	{
-		for_black = !for_black;
+		turn = Next(turn);
 		do_move = true;
 	}
-	if (ImGui::Button("Make move") || (for_black && do_move))
+	if (ImGui::Button("Make move") || (turn == BlackPlay && do_move))
 	{
-		enemy_cmd = TraverseState(board, board.gs, for_black, depth);
-		MakeMove(enemy_cmd, for_black);
-		for_black = !for_black;
+		enemy_cmd = TraverseState(board, board.gs, turn, depth);
+		MakeMove(enemy_cmd, turn);
+		turn = Next(turn);
 		do_move = false;
 	}
 
