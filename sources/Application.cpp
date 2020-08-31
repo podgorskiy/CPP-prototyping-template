@@ -1,5 +1,6 @@
 #include "Application.h"
 #include "utils/buffer.h"
+#include "utils/stack_buffer.h"
 #include <imgui.h>
 #include <examples/imgui_impl_opengl3.h>
 #include <stdio.h>
@@ -7,6 +8,7 @@
 #include <fsal.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <bits/stdc++.h>
 
 int move_number = 0;
 
@@ -247,7 +249,7 @@ int Evaluate(const Board& board, const GameState& gs, Turn turn)
 	if (ew == 0) ew = -1000000;
 	if (eb == 0) eb = 1000000;
 	int e = ew + eb + distance;
-	e += -move_number;
+	e += move_number;
 	return (turn == WhitePLay ? e : -e);
 
 	return -distance;
@@ -266,9 +268,48 @@ struct Command
 	Board::Direction dir = Board::NoDir;
 	int op_id = -1;
 
+	Command(): new_eval(INT_MIN), action(end), op_id(-1) {}
 	Command(int new_eval): new_eval(new_eval), action(end), op_id(-1) {}
 	Command(int new_eval, Action action, Board::Direction dir, int op_id): new_eval(new_eval), action(action), dir(dir), op_id(op_id) {}
+
+	int operator ()() const { return new_eval; }
 };
+
+
+template<typename C>
+typename C::value_type maximum(const C& v)
+{
+	typename C::size_type imax = 0;
+	auto max = v[0]();
+	for(typename C::size_type i = 0, l = v.size(); i < l; ++i)
+	{
+		auto c = v[i]();
+		if (c > max)
+		{
+			imax = i;
+			max = c;
+		}
+	}
+	return v[imax];
+}
+
+template<typename C>
+typename C::size_type argmaximum(const C& v)
+{
+	typename C::size_type imax = 0;
+	auto max = v[0]();
+	for(typename C::size_type i = 0, l = v.size(); i < l; ++i)
+	{
+		auto c = v[i]();
+		if (c > max)
+		{
+			imax = i;
+			max = c;
+		}
+	}
+	return imax;
+}
+
 
 Command TraverseState(Board& board, GameState& gs, Turn turn, int depth)
 {
@@ -279,24 +320,14 @@ Command TraverseState(Board& board, GameState& gs, Turn turn, int depth)
 	Operator* ops = turn == WhitePLay ? gs.white_ops  : gs.black_ops;
 	int count = turn == WhitePLay ? board.w_ops_count  : board.b_ops_count;
 
-	int ev_action_for_op[12];
-	Board::Direction dir_for_op[12];
-	Command::Action action_for_op[12];
-	for (int i = 0; i < count; ++i)
-	{
-		ev_action_for_op[i] = -10000000;
-	}
+	stack_buffer<Command, 12 * 4> successors;
 
-	bool has_alive = false;
 	for (int i = 0; i < count; ++i)
 	{
 		Operator& op = ops[i];
 
 		if (op.type == Operator::Dead)
 			continue;
-		has_alive = true;
-
-		int ev[2][4] = {{-10000000, -10000000, -10000000, -10000000}, {-10000000, -10000000, -10000000, -10000000}};
 
 		// attack
 		for (int _dir = 0; _dir < Board::End; ++_dir)
@@ -320,7 +351,8 @@ Command TraverseState(Board& board, GameState& gs, Turn turn, int depth)
 					board.clear_cell(enemy_opp.x, enemy_opp.y);
 				}
 
-				ev[Command::attack][dir] = -TraverseState(board, gs, Next(turn), depth-1).new_eval;
+				int eval = -TraverseState(board, gs, Next(turn), depth-1).new_eval;
+				successors.emplace_back(eval, Command::attack, dir, i);
 				enemy_opp = backup;
 				board.set_cell_op(enemy_opp.x, enemy_opp.y, id, Next(turn));
 			}
@@ -334,53 +366,19 @@ Command TraverseState(Board& board, GameState& gs, Turn turn, int depth)
 			if (board.get_cell(op.x, op.y, dir) == Board::Walkable)
 			{
 				board.move_piece(op.x, op.y, dir, turn);
-				ev[Command::move][dir] = -TraverseState(board, gs, Next(turn), depth-1).new_eval;
+				int eval = -TraverseState(board, gs, Next(turn), depth-1).new_eval;
+				successors.emplace_back(eval, Command::move, dir, i);
 				board.move_piece(op.x, op.y, Board::GetOpposit(dir), turn);
 			}
 		}
-
-		int max = ev[Command::move][Board::Left];
-		Command::Action max_aid = Command::move;
-		Board::Direction max_dir = Board::Left;
-		for (int a = 0; a < 2; ++a)
-		{
-			for (int d = 0; d < 4; ++d)
-			{
-				if (ev[a][d] > max)
-				{
-					max = ev[a][d];
-					max_aid = (Command::Action) a;
-					max_dir = (Board::Direction) d;
-				}
-			}
-		}
-
-		action_for_op[i] = max_aid;
-		dir_for_op[i] = max_dir;
-		ev_action_for_op[i] = max;
 	}
 
-	if (!has_alive)
+	if (successors.empty())
 	{
 		return Command(Evaluate(board, gs, turn));
 	}
 
-	int max = ev_action_for_op[0];
-	Command::Action max_aid = action_for_op[0];
-	Board::Direction max_dir = dir_for_op[0];
-	int max_op = 0;
-
-	for (int i = 1; i < count; ++i)
-	{
-		if (ev_action_for_op[i] > max && ops[i].type != Operator::Dead)
-		{
-			max_op = i;
-			max_aid = action_for_op[i];
-			max_dir = dir_for_op[i];
-			max = ev_action_for_op[i];
-		}
-	}
-	return Command(max, max_aid, max_dir, max_op);
+	return maximum(successors);
 }
 
 Application::Application()
@@ -566,7 +564,7 @@ void Application::Draw(float time)
 
 	ImGui::Text("Evaluation: %d", Evaluate(board, board.gs, WhitePLay));
 
-	static int depth = 5;
+	static int depth = 6;
 	ImGui::InputInt("Depth", &depth);
 
 	if (ImGui::Button("Skip"))
