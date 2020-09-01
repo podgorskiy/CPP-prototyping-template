@@ -36,7 +36,7 @@ namespace chessis
 		int e = ew + eb - distance;
 		e += depth;
 
-		// ++leaves;
+		++board.positions;
 		return (turn == Turn::WhitePLay ? e : -e);
 	}
 

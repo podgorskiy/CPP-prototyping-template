@@ -55,8 +55,6 @@ namespace chessis
 				ImVec4(0.4, 0.7, 0.9, 1.0),
 				ImVec4(0.9, 0.7, 0.4, 1.0),
 		};
-		static int leaves;
-
 		ImGui::Begin("Board");
 
 		ImGui::Columns(2);
@@ -126,9 +124,9 @@ namespace chessis
 
 		ImGui::NextColumn();
 
-		int t = leaves;
+		int t = board.positions;
 		ImGui::Text("Evaluation: %d", Evaluate(board, Turn::WhitePLay, 0));
-		leaves = t;
+		board.positions = t;
 
 		static int depth = 6;
 		ImGui::InputInt("Depth", &depth);
@@ -140,13 +138,11 @@ namespace chessis
 		}
 		if (ImGui::Button("Make move") || (turn == Turn::BlackPlay && do_move))
 		{
-			int alpha = INT_MIN;
-			int beta = INT_MAX;
-			leaves = 0;
+			board.positions = 0;
 			//if (turn == BlackPlay)
 			//	std::swap(alpha, beta);
 
-			enemy_cmd = AlphaBetaNegamax(board, depth, alpha, beta, turn);
+			enemy_cmd = FindBestMove(board, depth, turn);
 
 			DoMove(board, enemy_cmd, turn);
 			turn = Next(turn);
@@ -158,7 +154,7 @@ namespace chessis
 			turn = Next(turn);
 		}
 
-		ImGui::Text("Evaluations: %d", leaves);
+		ImGui::Text("Evaluations: %d", board.positions);
 
 		switch (enemy_cmd.action)
 		{

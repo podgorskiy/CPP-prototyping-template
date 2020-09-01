@@ -31,6 +31,8 @@ namespace chessis
 		int operator()() const { return new_eval; }
 
 		bool operator<(const Move& other) const { return new_eval < other.new_eval; }
+		bool operator<=(const Move& other) const { return new_eval <= other.new_eval; }
+		bool operator>(const Move& other) const { return new_eval > other.new_eval; }
 
 		Move operator-() { return Move(-new_eval, action, dir, op_id); };
 	};

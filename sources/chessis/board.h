@@ -31,6 +31,8 @@ namespace chessis
 		stack_buffer <std::pair<Piece, int>, MAX_DEPTH> op_history;
 		buffer <std::pair<Move, Turn::Enum> > cmd_history;
 
+		mutable int positions = 0;
+
 		bool valid_coord(int x, int y) const { return !(x < 0 || y < 0 || x >= size_x || y >= size_y); }
 
 		const int get_cell(int x, int y) const { return valid_coord(x, y) ? cell_state[x + y * size_x] : Block; }
