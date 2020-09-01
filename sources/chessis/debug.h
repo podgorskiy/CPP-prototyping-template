@@ -136,7 +136,9 @@ namespace chessis
 			turn = Next(turn);
 			do_move = true;
 		}
-		if (ImGui::Button("Make move") || (turn == Turn::BlackPlay && do_move))
+		static bool autoplay = false;
+		ImGui::Checkbox("Autoplay", &autoplay);
+		if (ImGui::Button("Make move") || (turn == Turn::BlackPlay && do_move) || (autoplay && !game_over(board)))
 		{
 			board.positions = 0;
 			//if (turn == BlackPlay)
