@@ -4,6 +4,7 @@
 #include "eval.h"
 #include "rules.h"
 #include "negamax.h"
+#include <vector>
 
 
 namespace chessis
@@ -62,30 +63,36 @@ namespace chessis
 		ImGui::Columns(2);
 
 		static Move enemy_cmd(0);
+		static std::vector<Move> moves;
 
 		bool do_move = false;
-
+		char buff[256];
 		for (int i = 0; i < board.size_y; ++i)
 		{
 			for (int j = 0; j < board.size_x; ++j)
 			{
 				ImGui::PushID(i * board.size_x + j);
 				int status = board.cell_state.data()[i * board.size_x + j];
+				const chessis::Piece* p = &chessis::nop();
 				if (status & Board::HasW)
 				{
 					int id = (status & 0xF00) >> 8;
+					p = &board.white_ops[id];
 					status = ((board.white_ops[id].type) << 1u) | 0u;
 				}
 				if (status & Board::HasB)
 				{
 					int id = (status & 0xF00) >> 8;
+					p = &board.black_ops[id];
 					status = ((board.black_ops[id].type) << 1u) | 1u;
 				}
 				ImGui::PushStyleColor(ImGuiCol_Button, colors[status]);
 				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colors[status]);
 				ImGui::PushStyleColor(ImGuiCol_ButtonActive, colors[status]);
 				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0, 0.0, 0.0, 1.0));
-				ImGui::Button(labels[status], ImVec2(60, 60));
+				sprintf(buff, "%s:%d", labels[status], p->health);
+				auto pos = ImGui::GetCursorPos();
+				ImGui::Button(buff, ImVec2(60, 60));
 
 				if (turn == Turn::WhitePLay)
 				{
@@ -108,6 +115,7 @@ namespace chessis
 								if (ImGui::AcceptDragDropPayload("op"))
 								{
 									DoMove(board, cmd, turn, false);
+									moves.clear();
 									turn = Next(turn);
 									do_move = true;
 								}
@@ -121,6 +129,23 @@ namespace chessis
 				if (j + 1 != board.size_x)
 				{ ImGui::SameLine(); }
 				ImGui::PopID();
+
+				for (auto& move: moves)
+				{
+					Piece* ops = turn == Turn::WhitePLay ? board.white_ops : board.black_ops;
+					Piece& op = ops[move.op_id];
+
+					int _x = op.x;
+					int _y = op.y;
+					MoveCoord(_x, _y, move.dir);
+					if (_x == j && _y == i)
+					{
+						auto pos2 = ImGui::GetCursorPos();
+						ImGui::SetCursorPos(pos);
+						ImGui::TextColored(ImVec4(255, 100, 100, 255), "%d", move.new_eval);
+						ImGui::SetCursorPos(pos2);
+					}
+				}
 			}
 		}
 
@@ -139,23 +164,38 @@ namespace chessis
 			do_move = true;
 		}
 		static bool autoplay = false;
+		static bool play_opponent = true;
 		ImGui::Checkbox("Autoplay", &autoplay);
-		if (ImGui::Button("Make move") || (turn == Turn::BlackPlay && do_move) || (autoplay && !game_over(board)))
+		ImGui::Checkbox("Play opponent", &play_opponent);
+		if (ImGui::Button("Make move") || (turn == Turn::BlackPlay && do_move && play_opponent) || (autoplay && !game_over(board)))
 		{
 			board.positions = 0;
 			//if (turn == BlackPlay)
 			//	std::swap(alpha, beta);
 
 			enemy_cmd = FindBestMove(board, depth, turn);
+			moves.clear();
 
 			DoMove(board, enemy_cmd, turn);
 			turn = Next(turn);
+		}
+		if (ImGui::Button("Eval moves. No prunning"))
+		{
+			board.positions = 0;
+			moves = ReturnAllMoves<false>(board, depth, turn);
+		}
+
+		if (ImGui::Button("Eval moves. Alpha beta prunning"))
+		{
+			board.positions = 0;
+			moves = ReturnAllMoves<true>(board, depth, turn);
 		}
 
 		if (ImGui::Button("Undo move"))
 		{
 			UndoMove(board);
 			turn = Next(turn);
+			moves.clear();
 		}
 
 		ImGui::Text("Evaluations: %d", board.positions);

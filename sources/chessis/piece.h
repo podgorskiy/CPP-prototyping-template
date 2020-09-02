@@ -23,16 +23,30 @@ namespace chessis
 		uint8_t y : 4;
 		uint8_t o : 2;
 
+		int get_max_health() const
+		{
+			switch (type)
+			{
+				case Piece::Pawn:
+					return 2;
+				case Piece::Knight:
+					return 3;
+				case Piece::Archer:
+					return 1;
+				default:
+					return 0;
+			}
+		}
 		int get_cost() const
 		{
 			switch (type)
 			{
 				case Piece::Pawn:
-					return 100 * health;
+					return 100 * (health ? get_max_health() + health : 0);
 				case Piece::Knight:
-					return 200 * health;
+					return 200 * (health ? get_max_health() + health : 0);
 				case Piece::Archer:
-					return 200 * health;
+					return 200 * (health ? get_max_health() + health : 0);
 				default:
 					return 0;
 			}

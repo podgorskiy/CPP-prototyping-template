@@ -89,8 +89,45 @@ namespace chessis
 			}
 		}
 
-		// printf("Best moves: %d\n", (int)best_moves.size());
+		printf("Best moves: %d\n", (int)best_moves.size());
 
 		return best_moves[rand() % best_moves.size()];
+	}
+
+
+	template <bool do_prunning>
+	std::vector<Move> ReturnAllMoves(Board& board, int depth, Turn::Enum turn)
+	{
+		if (game_over(board))
+		{
+			return { Move(Evaluate(board, turn, depth)) };
+		}
+
+		stack_buffer<Move, MAX_SUCCESSORS> successors;
+		std::vector<Move> moves;
+		GenerateMoves(board, turn, successors);
+
+		if (successors.empty())
+		{
+			return { Move(Evaluate(board, turn, depth)) };
+		}
+
+		int alpha = INT_MIN + 1;
+		int beta = INT_MAX - 1;
+
+		for (typename stack_buffer<Move, MAX_SUCCESSORS>::size_type i = 0, l = successors.size(); i < l; ++i)
+		{
+			Move& cmd = successors[i];
+
+			DoMove(board, cmd, turn, false);
+			cmd.new_eval = -AlphaBetaNegamax<do_prunning>(board, depth - 1, -beta, -alpha, Next(turn));
+			// int tmp = -AlphaBetaNegamax<false>(board, depth - 1, -beta, -alpha, Next(turn));
+			// assert(tmp == cmd.new_eval);
+			UndoMove(board);
+
+			moves.push_back(cmd);
+		}
+
+		return moves;
 	}
 }
