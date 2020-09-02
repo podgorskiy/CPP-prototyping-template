@@ -179,11 +179,11 @@ namespace chessis
 			DoMove(board, enemy_cmd, turn);
 			turn = Next(turn);
 		}
-		if (ImGui::Button("Eval moves. No prunning"))
-		{
-			board.positions = 0;
-			moves = ReturnAllMoves<false>(board, depth, turn);
-		}
+//		if (ImGui::Button("Eval moves. No prunning"))
+//		{
+//			board.positions = 0;
+//			moves = ReturnAllMoves<false>(board, depth, turn);
+//		}
 
 		if (ImGui::Button("Eval moves. Alpha beta prunning"))
 		{
