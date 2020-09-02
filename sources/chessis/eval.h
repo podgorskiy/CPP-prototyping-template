@@ -33,7 +33,7 @@ namespace chessis
 
 		if (ew == 0) { ew = -1000 * 100; }
 		if (eb == 0) { eb = 1000 * 100; }
-		int e = ew + eb - distance;
+		int e = ew + eb + distance;
 		e += depth;
 
 		++board.positions;

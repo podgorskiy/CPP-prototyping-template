@@ -89,7 +89,7 @@ namespace chessis
 			}
 		}
 
-		printf("Best moves: %d\n", (int)best_moves.size());
+		// printf("Best moves: %d\n", (int)best_moves.size());
 
 		return best_moves[rand() % best_moves.size()];
 	}

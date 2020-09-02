@@ -9,26 +9,65 @@
 #include <stdio.h>
 #include <string.h>
 #include <fsal.h>
+#include <stdlib.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <bits/stdc++.h>
-
+#include <time.h>
+#define NONIUS_RUNNER
+#include <nonius/nonius.h++>
+#include <iterator>
+#include <string>
 
 using namespace chessis;
-
-
-
-int leaves = 0;
-
 
 
 Application::Application()
 {
 	static_assert(sizeof(Piece) == sizeof(uint32_t));
 
+    nonius::configuration cfg;
+    cfg.samples = 10;
+    cfg.verbose = true;
+    nonius::benchmark benchmarks[] = {
+        nonius::benchmark("FindBestMove1", [](nonius::chronometer meter){
+			chessis::Board board;
+            chessis::make_board(board, ".pp##...\n"
+                                       "....#...\n"
+                                       "..#.....\n"
+                                       "......##\n"
+                                       "##......\n"
+                                       ".....#..\n"
+                                       "...#....\n"
+									   "...##PP.\n");
+
+            meter.measure([&](int i) {
+				auto move1 = FindBestMove(board, 12, Turn::BlackPlay);
+				DoMove(board, move1, Turn::BlackPlay);
+				auto move2 = FindBestMove(board, 12, Turn::WhitePLay);
+				DoMove(board, move2, Turn::WhitePLay);
+            });
+        }),
+        nonius::benchmark("FindBestMove3", [](nonius::chronometer meter){
+			chessis::Board board;
+            chessis::make_board(board, ".p##...\n"
+                                       "....#...\n"
+									   "...##P.\n");
+
+            meter.measure([&](int i) {
+				auto move1 = FindBestMove(board, 18, Turn::BlackPlay);
+				DoMove(board, move1, Turn::BlackPlay);
+				auto move2 = FindBestMove(board, 18, Turn::WhitePLay);
+				DoMove(board, move2, Turn::WhitePLay);
+            });
+        })
+    };
+    nonius::go(cfg, std::begin(benchmarks), std::end(benchmarks), nonius::standard_reporter());
+
 	fsal::FileSystem fs;
 	std::string b = fs.Open("../board.txt");
 	chessis::make_board(board, b);
+	srand(time(0));
 }
 
 

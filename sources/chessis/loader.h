@@ -38,10 +38,16 @@ namespace chessis
 						case 'P': board.white_ops[board.w_ops_count] = Piece({Piece::Pawn, 2,  0, uint8_t(j), uint8_t(i), 0});
 							board.cell_state.data()[i * board.size_x + j] |= Board::HasW | (board.w_ops_count++ << 8);
 							break;
-						case 'k': board.black_ops[board.b_ops_count] = Piece({Piece::Knight, 5,  0, uint8_t(j), uint8_t(i), 0});
+						case 'k': board.black_ops[board.b_ops_count] = Piece({Piece::Knight, 3,  0, uint8_t(j), uint8_t(i), 0});
 							board.cell_state.data()[i * board.size_x + j] |= Board::HasB | (board.b_ops_count++ << 8);
 							break;
-						case 'K': board.white_ops[board.w_ops_count] = Piece({Piece::Knight, 5,  0, uint8_t(j), uint8_t(i), 0});
+						case 'K': board.white_ops[board.w_ops_count] = Piece({Piece::Knight, 3,  0, uint8_t(j), uint8_t(i), 0});
+							board.cell_state.data()[i * board.size_x + j] |= Board::HasW | (board.w_ops_count++ << 8);
+							break;
+						case 'a': board.black_ops[board.b_ops_count] = Piece({Piece::Archer, 1,  0, uint8_t(j), uint8_t(i), 0});
+							board.cell_state.data()[i * board.size_x + j] |= Board::HasB | (board.b_ops_count++ << 8);
+							break;
+						case 'A': board.white_ops[board.w_ops_count] = Piece({Piece::Archer, 1,  0, uint8_t(j), uint8_t(i), 0});
 							board.cell_state.data()[i * board.size_x + j] |= Board::HasW | (board.w_ops_count++ << 8);
 							break;
 				}
@@ -60,6 +66,8 @@ namespace chessis
 			case 'K':
 			case 'p':
 			case 'k':
+			case 'a':
+			case 'A':
 				return Board::Walkable;
 			case '#':
 				return Board::Block;

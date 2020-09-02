@@ -113,6 +113,8 @@ add_subdirectory (libs/glfw)
 add_subdirectory (libs/gl3w)
 add_subdirectory (libs/fsal)
 add_subdirectory (libs/yaml-cpp)
+add_subdirectory (libs/nonius)
+add_subdirectory (libs/doctest)
 
 target_include_directories(fsal PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/libs/lz4/lib)
 
@@ -170,7 +172,7 @@ add_executable(main ${SOURCES})
 #####################################################################
 # Linkage
 #####################################################################
-set(LIBRARIES rt m  stdc++fs gomp  ${PYTHON_LIBRARY} glfw gl3w imgui pthread dl pugixml fsal lz4 zlib_static yaml-cpp ${OPENGL_LIBRARIES} )
+set(LIBRARIES rt m  stdc++fs gomp  ${PYTHON_LIBRARY} glfw gl3w imgui doctest::doctest nonius pthread dl pugixml fsal lz4 zlib_static yaml-cpp ${OPENGL_LIBRARIES} )
 target_link_libraries(main PRIVATE ${LIBRARIES})
 SET_TARGET_PROPERTIES(main PROPERTIES PREFIX "_")
 #####################################################################

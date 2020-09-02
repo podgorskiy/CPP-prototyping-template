@@ -46,12 +46,14 @@ namespace chessis
 
 	void DebugUI(Board& board, Turn::Enum& turn)
 	{
-		const char* labels[6] = {"", "Block", "WP", "BP", "WK", "BK"};
-		const ImVec4 colors[6] = {
+		const char* labels[8] = {"", "Block", "WP", "BP", "WK", "BK", "WA", "BA"};
+		const ImVec4 colors[8] = {
 				ImVec4(0.255, 0.255, 0.255, 1.0),
 				ImVec4(0.7, 0.8, 0.7, 1.0),
 				ImVec4(0.4, 0.4, 0.9, 1.0),
 				ImVec4(0.9, 0.4, 0.4, 1.0),
+				ImVec4(0.4, 0.7, 0.9, 1.0),
+				ImVec4(0.9, 0.7, 0.4, 1.0),
 				ImVec4(0.4, 0.7, 0.9, 1.0),
 				ImVec4(0.9, 0.7, 0.4, 1.0),
 		};

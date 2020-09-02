@@ -13,7 +13,7 @@ namespace chessis
 			Dead = 0x00,
 			Pawn = 0x01,
 			Knight = 0x02,
-			Rook = 0x03,
+			Archer = 0x03,
 		};
 
 		Type type : 8;
@@ -31,8 +31,8 @@ namespace chessis
 					return 100 * health;
 				case Piece::Knight:
 					return 200 * health;
-				case Piece::Rook:
-					return 300 * health;
+				case Piece::Archer:
+					return 200 * health;
 				default:
 					return 0;
 			}
