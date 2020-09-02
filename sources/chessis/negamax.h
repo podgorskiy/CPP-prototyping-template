@@ -75,7 +75,7 @@ namespace chessis
 			// assert(tmp == cmd.new_eval);
 			UndoMove(board);
 
-			alpha = std::max(alpha, cmd.new_eval);
+			// alpha = std::max(alpha, cmd.new_eval);
 
 			if (best_value < cmd.new_eval)
 			{
@@ -124,6 +124,7 @@ namespace chessis
 			// int tmp = -AlphaBetaNegamax<false>(board, depth - 1, -beta, -alpha, Next(turn));
 			// assert(tmp == cmd.new_eval);
 			UndoMove(board);
+			// alpha = std::max(alpha, cmd.new_eval);
 
 			moves.push_back(cmd);
 		}
