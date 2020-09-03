@@ -18,18 +18,18 @@ namespace chessis
 			eb -= board.black_ops[i].get_cost();
 		}
 		int distance = 0;
-		for (int i = 0; i < board.w_ops_count; ++i)
-		{
-			for (int j = 0; j < board.b_ops_count; ++j)
-			{
-				if (board.black_ops[j].health != 0 && board.white_ops[i].health != 0)
-				{
-					float d = sqr(board.black_ops[j].x - board.white_ops[i].x) +
-					          sqr(board.black_ops[j].y - board.white_ops[i].y);
-					distance += d;// * (for_black ? (gs.white_ops[i].health / gs.black_ops[j].health + 1) : (gs.black_ops[j].health / gs.white_ops[i].health + 1));
-				}
-			}
-		}
+//		for (int i = 0; i < board.w_ops_count; ++i)
+//		{
+//			for (int j = 0; j < board.b_ops_count; ++j)
+//			{
+//				if (board.black_ops[j].health != 0 && board.white_ops[i].health != 0)
+//				{
+//					float d = sqr(board.black_ops[j].x - board.white_ops[i].x) +
+//					          sqr(board.black_ops[j].y - board.white_ops[i].y);
+//					distance += d;// * (for_black ? (gs.white_ops[i].health / gs.black_ops[j].health + 1) : (gs.black_ops[j].health / gs.white_ops[i].health + 1));
+//				}
+//			}
+//		}
 
 		if (ew == 0) { ew = -1000 * 100; }
 		if (eb == 0) { eb = 1000 * 100; }
