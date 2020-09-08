@@ -51,6 +51,7 @@ namespace chessis
 	{
 		Piece* ops = turn == Turn::WhitePLay ? board.white_ops : board.black_ops;
 		Piece* enemy_ops = turn == Turn::BlackPlay ? board.white_ops : board.black_ops;
+		int& total_health = turn == Turn::BlackPlay ? board.white_total_health : board.black_total_health;
 		Piece& op = ops[cmd.op_id];
 		if (!final)
 		{
@@ -71,23 +72,31 @@ namespace chessis
 				int enemy_opp_id = board.get_opp_id(x, y, turn == Turn::BlackPlay, turn == Turn::WhitePLay);
 				assert(enemy_opp_id != -1);
 				auto& enemy_opp = enemy_ops[enemy_opp_id];
-				if (!final)
-				{
-					board.op_history.emplace_back(enemy_opp, enemy_opp_id);
-				}
+				Piece enemy_opp_backup = enemy_opp;
 
-				enemy_opp.health -= 1;
+				int dmg = 1;
+				int cost_before = enemy_opp.get_cost();
+				enemy_opp.health -= dmg;
+
 				if (enemy_opp.health <= 0)
 				{
 					enemy_opp.health = 0;
 					enemy_opp.type = Piece::Dead;
 					board.clear_cell(enemy_opp.x, enemy_opp.y);
 				}
+				int cost_after = enemy_opp.get_cost();
+				int total_health_diff = cost_before - cost_after;
+
+				total_health -= total_health_diff;
+
+				if (!final)
+				{
+					board.op_history.emplace_back(enemy_opp_backup, enemy_opp_id, total_health_diff);
+				}
 				break;
 			}
 		}
 	}
-
 
 	void UndoMove(Board& board)
 	{
@@ -102,6 +111,7 @@ namespace chessis
 
 		Piece* ops = turn == Turn::WhitePLay ? board.white_ops : board.black_ops;
 		Piece* enemy_ops = turn == Turn::BlackPlay ? board.white_ops : board.black_ops;
+		int& total_health = turn == Turn::BlackPlay ? board.white_total_health : board.black_total_health;
 		Piece& op = ops[cmd.op_id];
 
 		switch (cmd.action)
@@ -114,10 +124,11 @@ namespace chessis
 			case Move::attack:
 			{
 				auto& backup = board.op_history.back();
-				auto& enemy_opp = enemy_ops[backup.second];
-				enemy_opp = backup.first;
-				board.set_cell_op(enemy_opp.x, enemy_opp.y, backup.second, Next(turn));
+				auto& enemy_opp = enemy_ops[std::get<1>(backup)];
+				enemy_opp = std::get<0>(backup);
+				board.set_cell_op(enemy_opp.x, enemy_opp.y, std::get<1>(backup), Next(turn));
 				board.op_history.pop_back();
+				total_health += std::get<2>(backup);
 				break;
 			}
 		}

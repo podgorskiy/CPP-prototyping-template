@@ -7,16 +7,6 @@ namespace chessis
 {
 	int Evaluate(const Board& board, Turn::Enum turn, int depth)
 	{
-		int ew = 0;
-		for (int i = 0; i < board.w_ops_count; ++i)
-		{
-			ew += board.white_ops[i].get_cost();
-		}
-		int eb = 0;
-		for (int i = 0; i < board.b_ops_count; ++i)
-		{
-			eb -= board.black_ops[i].get_cost();
-		}
 		int distance = 0;
 //		for (int i = 0; i < board.w_ops_count; ++i)
 //		{
@@ -31,10 +21,9 @@ namespace chessis
 //			}
 //		}
 
-		if (ew == 0) { ew = -1000 * 100; }
-		if (eb == 0) { eb = 1000 * 100; }
-		int e = ew + eb + distance;
-		e += depth;
+		int e = board.white_total_health - board.black_total_health + distance + depth;
+		if (board.white_total_health == 0) { e -= 1000 * 100; }
+		if (board.black_total_health == 0) { e += 1000 * 100; }
 
 		++board.positions;
 		return (turn == Turn::WhitePLay ? e : -e);
@@ -42,16 +31,6 @@ namespace chessis
 
 	bool game_over(const Board& board)
 	{
-		int ew = 0;
-		for (int i = 0; i < board.w_ops_count; ++i)
-		{
-			ew += board.white_ops[i].get_cost();
-		}
-		int eb = 0;
-		for (int i = 0; i < board.b_ops_count; ++i)
-		{
-			eb -= board.black_ops[i].get_cost();
-		}
-		return ew == 0 || eb == 0;
+		return board.white_total_health == 0 || board.black_total_health == 0;
 	}
 }

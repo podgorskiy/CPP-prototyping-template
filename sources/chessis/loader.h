@@ -53,6 +53,7 @@ namespace chessis
 				}
 			}
 		}
+		board.init_eval();
 	}
 
 	inline Board::state get_cell_type(char c)
