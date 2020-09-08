@@ -28,7 +28,10 @@ namespace chessis
 		uint8_t b_ops_count = 0;
 		uint8_t w_ops_count = 0;
 
-		stack_buffer <std::pair<Piece, int>, MAX_DEPTH> op_history;
+		int white_total_health = 0;
+		int black_total_health = 0;
+
+		stack_buffer <std::tuple<Piece, int, int>, MAX_DEPTH> op_history;
 		buffer <std::pair<Move, Turn::Enum> > cmd_history;
 
 		mutable int positions = 0;
@@ -147,6 +150,22 @@ namespace chessis
 			{
 				return (c & 0xF00) >> 8;
 			}
+		}
+
+		bool init_eval()
+		{
+			int ew = 0;
+			for (int i = 0; i < w_ops_count; ++i)
+			{
+				ew += white_ops[i].get_cost();
+			}
+			int eb = 0;
+			for (int i = 0; i < b_ops_count; ++i)
+			{
+				eb -= black_ops[i].get_cost();
+			}
+			white_total_health = ew;
+			black_total_health = eb;
 		}
 	};
 }

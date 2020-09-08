@@ -42,9 +42,9 @@ Application::Application()
 									   "...##PP.\n");
 
             meter.measure([&](int i) {
-				auto move1 = FindBestMove(board, 12, Turn::BlackPlay);
+				auto move1 = FindBestMove(board, 17, Turn::BlackPlay);
 				DoMove(board, move1, Turn::BlackPlay);
-				auto move2 = FindBestMove(board, 12, Turn::WhitePLay);
+				auto move2 = FindBestMove(board, 17, Turn::WhitePLay);
 				DoMove(board, move2, Turn::WhitePLay);
             });
         }),
@@ -63,6 +63,8 @@ Application::Application()
         })
     };
     nonius::go(cfg, std::begin(benchmarks), std::end(benchmarks), nonius::standard_reporter());
+
+    exit(0);
 
 	fsal::FileSystem fs;
 	std::string b = fs.Open("../board.txt");
