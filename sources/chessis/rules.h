@@ -68,7 +68,7 @@ namespace chessis
 				int x = op.x;
 				int y = op.y;
 				MoveCoord(x, y, cmd.dir);
-				int enemy_opp_id = board.get_opp_id(x, y, turn == Turn::BlackPlay, turn == Turn::WhitePLay);
+				int enemy_opp_id = board.get_opp_id_nch(x, y, turn == Turn::BlackPlay, turn == Turn::WhitePLay);
 				assert(enemy_opp_id != -1);
 				auto& enemy_opp = enemy_ops[enemy_opp_id];
 				if (!final)
@@ -81,7 +81,7 @@ namespace chessis
 				{
 					enemy_opp.health = 0;
 					enemy_opp.type = Piece::Dead;
-					board.clear_cell(enemy_opp.x, enemy_opp.y);
+					board.clear_cell_nch(enemy_opp.x, enemy_opp.y);
 				}
 				break;
 			}
@@ -116,7 +116,7 @@ namespace chessis
 				auto& backup = board.op_history.back();
 				auto& enemy_opp = enemy_ops[backup.second];
 				enemy_opp = backup.first;
-				board.set_cell_op(enemy_opp.x, enemy_opp.y, backup.second, Next(turn));
+				board.set_cell_op_nch(enemy_opp.x, enemy_opp.y, backup.second, Next(turn));
 				board.op_history.pop_back();
 				break;
 			}

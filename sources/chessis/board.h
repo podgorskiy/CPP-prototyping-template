@@ -37,6 +37,8 @@ namespace chessis
 
 		const int get_cell(int x, int y) const { return valid_coord(x, y) ? cell_state[x + y * size_x] : Block; }
 
+		const int get_cell_nch(int x, int y) const { return cell_state[x + y * size_x]; }
+
 		const int get_cell(int x, int y, Direction::Enum dir) const
 		{
 			MoveCoord(x, y, dir);
@@ -55,23 +57,42 @@ namespace chessis
 			}
 		}
 
+		void set_cell_and_or_nch(int x, int y, int a, int o)
+		{
+			auto& c = cell_state[x + y * size_x];
+			c &= a;
+			c |= o;
+		}
+
 		void clear_cell(int x, int y) { set_cell_and_or(x, y, 0xFF, 0); }
+
+		void clear_cell_nch(int x, int y)
+		{
+			auto& c = cell_state[x + y * size_x];
+			c &= 0xFF;
+			c |= 0;
+		}
 
 		void set_cell_op(int x, int y, int op_id, Turn::Enum turn)
 		{
 			set_cell_and_or(x, y, 0xFF, (op_id << 8) | (turn == Turn::WhitePLay ? Board::HasW : Board::HasB));
 		}
 
+		void set_cell_op_nch(int x, int y, int op_id, Turn::Enum turn)
+		{
+			set_cell_and_or_nch(x, y, 0xFF, (op_id << 8) | (turn == Turn::WhitePLay ? Board::HasW : Board::HasB));
+		}
+
 		void move_piece(int x, int y, Direction::Enum dir, Turn::Enum turn)
 		{
-			int piece = get_opp_id(x, y, turn == Turn::WhitePLay, turn == Turn::BlackPlay);
-			assert(piece != -1);
-			clear_cell(x, y);
+			int piece = get_opp_id_nch(x, y, turn == Turn::WhitePLay, turn == Turn::BlackPlay);
+			// assert(piece != -1);
+			clear_cell_nch(x, y);
 			MoveCoord(x, y, dir);
 			Piece* ops = turn == Turn::WhitePLay ? white_ops : black_ops;
 			ops[piece].x = x;
 			ops[piece].y = y;
-			set_cell_op(x, y, piece, turn);
+			set_cell_op_nch(x, y, piece, turn);
 		}
 
 		Piece& get_opp(int x, int y, bool white, bool black)
@@ -83,7 +104,7 @@ namespace chessis
 		{
 			if (valid_coord(x, y))
 			{
-				auto c = get_cell(x, y);
+				auto c = get_cell_nch(x, y);
 				if (c & Board::HasW && white)
 				{
 					int id = (c & 0xF00) >> 8;
@@ -102,7 +123,7 @@ namespace chessis
 		{
 			if (valid_coord(x, y))
 			{
-				auto c = get_cell(x, y);
+				auto c = get_cell_nch(x, y);
 				if ((c & Board::HasW) && white)
 				{
 					return (c & 0xF00) >> 8;
@@ -113,6 +134,19 @@ namespace chessis
 				}
 			}
 			return -1;
+		}
+
+		int get_opp_id_nch(int x, int y, bool white, bool black) const
+		{
+			auto c = get_cell_nch(x, y);
+			if ((c & Board::HasW) && white)
+			{
+				return (c & 0xF00) >> 8;
+			}
+			else if ((c & Board::HasB) && black)
+			{
+				return (c & 0xF00) >> 8;
+			}
 		}
 	};
 }
