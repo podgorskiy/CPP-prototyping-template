@@ -62,8 +62,9 @@ namespace chessis
 
 		ImGui::Columns(2);
 
-		static Move enemy_cmd(0);
+		static Move last_move(0);
 		static std::vector<Move> moves;
+		ImVec2 poses[10][20];
 
 		int e = Evaluate(board, turn, 0);
 
@@ -74,6 +75,7 @@ namespace chessis
 			for (int j = 0; j < board.size_x; ++j)
 			{
 				auto pos = ImGui::GetCursorPos();
+				poses[i][j] = pos;
 				ImGui::PushID(i * board.size_x + j);
 				int status = board.cell_state.data()[i * board.size_x + j];
 				const chessis::Piece* p = &chessis::nop();
@@ -123,6 +125,7 @@ namespace chessis
 									moves.clear();
 									turn = Next(turn);
 									do_move = true;
+									last_move = cmd;
 								}
 							}
 						}
@@ -134,7 +137,13 @@ namespace chessis
 				if (j + 1 != board.size_x)
 				{ ImGui::SameLine(); }
 				ImGui::PopID();
+			}
+		}
 
+		for (int i = 0; i < board.size_y; ++i)
+		{
+			for (int j = 0; j < board.size_x; ++j)
+			{
 				auto pos2 = ImGui::GetCursorPos();
 				for (auto& move: moves)
 				{
@@ -146,7 +155,7 @@ namespace chessis
 					MoveCoord(_x, _y, move.dir);
 					if (_x == j && _y == i)
 					{
-						auto pos_copy = pos;
+						auto pos_copy = poses[i][j];
 						pos_copy.x += 20;
 						pos_copy.y += 20;
 						int tmp_x = 0;
@@ -156,8 +165,46 @@ namespace chessis
 						pos_copy.y -= tmp_y * 18;
 						ImGui::SetCursorPos(pos_copy);
 						int diff = move.new_eval - e;
-						ImGui::TextColored(ImVec4(diff > 0 ? 0.2: 1.0, diff > 0 ? 1.0: 0.2, 0.2, 255), "%d", diff);
+						ImGui::TextColored(ImVec4(diff > 0 ? 0.2 : 1.0, diff > 0 ? 1.0 : 0.2, 0.2, 255), "%d", diff);
 						ImGui::SetCursorPos(pos2);
+					}
+				}
+			}
+		}
+
+		for (int i = 0; i < board.size_y; ++i)
+		{
+			for (int j = 0; j < board.size_x; ++j)
+			{
+				if (last_move.action == Move::attack)
+				{
+					Piece* ops = turn != Turn::WhitePLay ? board.white_ops : board.black_ops;
+					Piece& op = ops[last_move.op_id];
+
+					int _x = op.x;
+					int _y = op.y;
+					if (_x == j && _y == i)
+					{
+						ImGui::SetCursorPos(poses[i][j]);
+                        const ImVec2 p = ImGui::GetCursorScreenPos();
+
+						auto pos_copy = p;
+						pos_copy.x += 30;
+						pos_copy.y += 30;
+						auto pos_copy2 = pos_copy;
+						int tmp_x = 0;
+						int tmp_y = 0;
+						MoveCoord(tmp_x, tmp_y, last_move.dir);
+						pos_copy.x += tmp_x * 4;
+						pos_copy.y += tmp_y * 4;
+						pos_copy2.x += tmp_x * 70;
+						pos_copy2.y += tmp_y * 70;
+                        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+						draw_list->AddLine(pos_copy, pos_copy2, ImColor(ImVec4(1.0, 0.2, 0.2, 255)), 3.);
+
+						//ImGui::SetCursorPos(pos_copy);
+						//ImGui::TextColored(ImVec4(0.2, 1.0, 0.2, 255), "X");
+						//ImGui::SetCursorPos(pos2);
 					}
 				}
 			}
@@ -192,10 +239,10 @@ namespace chessis
 			//	std::swap(alpha, beta);
 			int depth = turn == Turn::BlackPlay ? black_depth : white_depth;
 
-			enemy_cmd = FindBestMove(board, depth, turn);
+			last_move = FindBestMove(board, depth, turn);
 			moves.clear();
 
-			DoMove(board, enemy_cmd, turn);
+			DoMove(board, last_move, turn);
 			turn = Next(turn);
 			if (turn == Turn::WhitePLay && autoeval)
 			{
@@ -225,7 +272,7 @@ namespace chessis
 
 		ImGui::Text("Evaluations: %d", board.positions);
 
-		switch (enemy_cmd.action)
+		switch (last_move.action)
 		{
 			case Move::move:
 			{
@@ -239,7 +286,7 @@ namespace chessis
 			}
 		}
 
-		switch (enemy_cmd.dir)
+		switch (last_move.dir)
 		{
 			case Direction::Left:
 				ImGui::Text("Enemy dir: Left");
