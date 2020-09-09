@@ -1,11 +1,11 @@
 #pragma once
-#include "chessis/board.h"
 #include <glm/glm.hpp>
+#include <chessis/board.h>
 
 class Application
 {
 public:
-	Application();
+	Application(int argc, const char* const* argv);
 	~Application();
 
 	void Draw(float time);

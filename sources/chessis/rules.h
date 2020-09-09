@@ -4,7 +4,7 @@
 
 namespace chessis
 {
-	void GenerateMoves(const Board& board, Turn::Enum turn, stack_buffer<Move, MAX_SUCCESSORS>& successors)
+	inline void GenerateMoves(const Board& board, Turn::Enum turn, stack_buffer<Move, MAX_SUCCESSORS>& successors)
 	{
 		const Piece* ops = turn == Turn::WhitePLay ? board.white_ops : board.black_ops;
 		int count = turn == Turn::WhitePLay ? board.w_ops_count : board.b_ops_count;
@@ -47,7 +47,7 @@ namespace chessis
 	}
 
 
-	void DoMove(Board& board, Move cmd, Turn::Enum turn, bool final = false)
+	inline void DoMove(Board& board, Move cmd, Turn::Enum turn, bool final = false)
 	{
 		Piece* ops = turn == Turn::WhitePLay ? board.white_ops : board.black_ops;
 		Piece* enemy_ops = turn == Turn::BlackPlay ? board.white_ops : board.black_ops;
@@ -98,7 +98,7 @@ namespace chessis
 		}
 	}
 
-	void UndoMove(Board& board)
+	inline void UndoMove(Board& board)
 	{
 		if (board.cmd_history.empty())
 		{

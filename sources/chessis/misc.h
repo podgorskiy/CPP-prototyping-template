@@ -4,10 +4,10 @@
 
 namespace chessis
 {
-	int sqr(int x) {return x * x;}
+	inline int sqr(int x) {return x * x;}
 
 	template<typename C>
-	typename C::value_type maximum(const C& v)
+	inline typename C::value_type maximum(const C& v)
 	{
 		typename C::size_type imax = 0;
 		auto max = v[0]();
@@ -24,7 +24,7 @@ namespace chessis
 	}
 
 	template<typename C>
-	typename C::size_type argmaximum(const C& v)
+	inline typename C::size_type argmaximum(const C& v)
 	{
 		typename C::size_type imax = 0;
 		auto max = v[0]();

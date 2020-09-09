@@ -9,7 +9,7 @@
 
 namespace chessis
 {
-	Move InferCommand(const Board& board, int op_id, Turn::Enum turn, int x, int y)
+	inline Move InferCommand(const Board& board, int op_id, Turn::Enum turn, int x, int y)
 	{
 		const Piece* ops = turn == Turn::WhitePLay ? board.white_ops : board.black_ops;
 		const Piece& op = ops[op_id];
@@ -45,7 +45,7 @@ namespace chessis
 		return Move(0, Move::end, Direction::NoDir, -1);
 	}
 
-	void DebugUI(Board& board, Turn::Enum& turn)
+	inline void DebugUI(Board& board, Turn::Enum& turn)
 	{
 		const char* labels[8] = {"", "Block", "WP", "BP", "WK", "BK", "WA", "BA"};
 		const ImVec4 colors[8] = {

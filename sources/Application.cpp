@@ -1,9 +1,5 @@
 #include "Application.h"
-#include "utils/buffer.h"
-#include "utils/stack_buffer.h"
-#include "chessis/misc.h"
-#include "chessis/loader.h"
-#include "chessis/debug.h"
+#include <chessis/chessis.h>
 #include <imgui.h>
 #include <examples/imgui_impl_opengl3.h>
 #include <stdio.h>
@@ -18,13 +14,17 @@
 #include <nonius/nonius.h++>
 #include <iterator>
 #include <string>
+#include "utils/doc_test_runner.h"
+
 
 using namespace chessis;
 
 
-Application::Application()
+Application::Application(int argc, const char* const* argv)
 {
 	static_assert(sizeof(Piece) == sizeof(uint32_t));
+
+	run_doc_tests(argc, argv);
 
     nonius::configuration cfg;
     cfg.samples = 10;
@@ -42,9 +42,9 @@ Application::Application()
 									   "...##PP.\n");
 
             meter.measure([&](int i) {
-				auto move1 = FindBestMove(board, 17, Turn::BlackPlay);
+				auto move1 = FindBestMove(board, 12, Turn::BlackPlay);
 				DoMove(board, move1, Turn::BlackPlay);
-				auto move2 = FindBestMove(board, 17, Turn::WhitePLay);
+				auto move2 = FindBestMove(board, 12, Turn::WhitePLay);
 				DoMove(board, move2, Turn::WhitePLay);
             });
         }),
@@ -64,7 +64,7 @@ Application::Application()
     };
     nonius::go(cfg, std::begin(benchmarks), std::end(benchmarks), nonius::standard_reporter());
 
-    exit(0);
+    // exit(0);
 
 	fsal::FileSystem fs;
 	std::string b = fs.Open("../board.txt");

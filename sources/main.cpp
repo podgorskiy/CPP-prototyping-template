@@ -8,7 +8,7 @@
 #include "examples/imgui_impl_glfw.h"
 #include "examples/imgui_impl_opengl3.h"
 
-int main()
+int main(int argc, const char* const* argv)
 {
 	GLFWwindow* window;
 
@@ -40,7 +40,7 @@ int main()
 	ImGui_ImplGlfw_InitForOpenGL(window, false);
 
 	{
-		std::shared_ptr<Application> app = std::make_shared<Application>();
+		std::shared_ptr<Application> app = std::make_shared<Application>(argc, argv);
 
 	    const char* glsl_version = "#version 130";
 	    ImGui_ImplOpenGL3_Init(glsl_version);

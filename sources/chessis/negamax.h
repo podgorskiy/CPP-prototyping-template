@@ -45,7 +45,7 @@ namespace chessis
 	}
 
 
-	Move FindBestMove(Board& board, int depth, Turn::Enum turn)
+	inline Move FindBestMove(Board& board, int depth, Turn::Enum turn)
 	{
 		if (game_over(board))
 		{

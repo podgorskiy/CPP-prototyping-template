@@ -5,7 +5,7 @@
 
 namespace chessis
 {
-	int Evaluate(const Board& board, Turn::Enum turn, int depth)
+	inline int Evaluate(const Board& board, Turn::Enum turn, int depth)
 	{
 		int distance = 0;
 //		for (int i = 0; i < board.w_ops_count; ++i)
@@ -29,7 +29,7 @@ namespace chessis
 		return (turn == Turn::WhitePLay ? e : -e);
 	}
 
-	bool game_over(const Board& board)
+	inline bool game_over(const Board& board)
 	{
 		return board.white_total_health == 0 || board.black_total_health == 0;
 	}
