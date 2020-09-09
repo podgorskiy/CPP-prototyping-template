@@ -162,7 +162,7 @@ namespace chessis
 			int eb = 0;
 			for (int i = 0; i < b_ops_count; ++i)
 			{
-				eb -= black_ops[i].get_cost();
+				eb += black_ops[i].get_cost();
 			}
 			white_total_health = ew;
 			black_total_health = eb;
