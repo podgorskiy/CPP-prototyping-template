@@ -25,7 +25,7 @@ public:
 
     buffer(const buffer& other):m_data(nullptr), m_size(other.m_size), m_reserved(other.m_size)
     {
-		m_data = static_cast<uint8_t*>(malloc(m_size * sizeof(T)));
+		m_data = static_cast<pointer>(malloc(m_size * sizeof(T)));
 		memcpy(m_data, other.m_data, sizeof(T) * m_size);
     }
 
