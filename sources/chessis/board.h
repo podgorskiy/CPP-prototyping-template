@@ -167,5 +167,32 @@ namespace chessis
 			white_total_health = ew;
 			black_total_health = eb;
 		}
+
+		void dump_board()
+		{
+			const char* labels[8] = {".", "#", "P", "p", "K", "k", "A", "a"};
+			const chessis::Piece* p;
+			for (int i = 0; i < size_y; ++i)
+			{
+				for (int j = 0; j < size_x; ++j)
+				{
+					int status = cell_state.data()[i * size_x + j];
+					if (status & Board::HasW)
+					{
+						int id = (status & 0xF00) >> 8;
+						p = &white_ops[id];
+						status = ((white_ops[id].type) << 1u) | 0u;
+					}
+					if (status & Board::HasB)
+					{
+						int id = (status & 0xF00) >> 8;
+						p = &black_ops[id];
+						status = ((black_ops[id].type) << 1u) | 1u;
+					}
+					printf("%s", labels[status]);
+				}
+				printf("\n");
+			}
+		}
 	};
 }

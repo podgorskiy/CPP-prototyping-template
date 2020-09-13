@@ -312,6 +312,11 @@ namespace chessis
 			enemy_health += board.black_ops[i].get_cost();
 		}
 		ImGui::Text("Health: %d : %d", player_health, enemy_health);
+
+		if (ImGui::Button("Print board"))
+		{
+			board.dump_board();
+		}
 		ImGui::End();
 	}
 }
