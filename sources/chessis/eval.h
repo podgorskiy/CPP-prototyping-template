@@ -21,9 +21,14 @@ namespace chessis
 //			}
 //		}
 
-		int e = board.white_total_health - board.black_total_health + distance + depth;
-		if (board.white_total_health == 0) { e -= 1000 * 100; }
-		if (board.black_total_health == 0) { e += 1000 * 100; }
+		int eog_penalty = 0;
+		bool black_win = board.white_total_health == 0;
+		bool white_win = board.black_total_health == 0;
+
+		if (black_win) { eog_penalty = -1000 * 100 - depth; }
+		if (white_win) { eog_penalty = 1000 * 100 + depth; }
+
+		int e = board.white_total_health - board.black_total_health + distance + eog_penalty;
 
 		++board.positions;
 		return (turn == Turn::WhitePLay ? e : -e);
