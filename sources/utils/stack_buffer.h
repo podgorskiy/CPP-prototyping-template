@@ -24,8 +24,26 @@ public:
 	typedef pointer iterator;
 	typedef const_pointer const_iterator;
 
-    stack_buffer( const stack_buffer& ) = delete; // non construction-copyable
-    stack_buffer& operator=( const stack_buffer& ) = delete; // non copyable
+    stack_buffer(const stack_buffer& other):m_size(other.m_size)
+    {
+		memcpy(m_data, other.m_data, sizeof(T) * m_size);
+    }
+
+    stack_buffer& operator=( const stack_buffer& other)
+    {
+    	m_size = other.size;
+		memcpy(m_data, other.m_data, sizeof(T) * m_size);
+    }
+
+    bool operator==(const stack_buffer& other) const
+    {
+    	if (m_size != other.m_size)
+    		return false;
+    	for (int i = 0; i < m_size; ++i)
+    		if (m_data[i] != other.m_data[i])
+    			return false;
+    	return true;
+    }
 
 	stack_buffer(): m_size(0)
 	{}
@@ -34,7 +52,7 @@ public:
 	{
 		if (data != nullptr)
 		{
-			memcpy(m_data, data, size);
+			memcpy(m_data, data, sizeof(T) * size);
 			m_size = size;
 		}
 		else

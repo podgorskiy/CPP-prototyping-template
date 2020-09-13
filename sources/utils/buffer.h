@@ -23,8 +23,28 @@ public:
 	typedef pointer iterator;
 	typedef const_pointer const_iterator;
 
-    buffer( const buffer& ) = delete; // non construction-copyable
-    buffer& operator=( const buffer& ) = delete; // non copyable
+    buffer(const buffer& other):m_data(nullptr), m_size(other.m_size), m_reserved(other.m_size)
+    {
+		m_data = static_cast<uint8_t*>(malloc(m_size * sizeof(T)));
+		memcpy(m_data, other.m_data, sizeof(T) * m_size);
+    }
+
+    buffer& operator=(const buffer& other)
+    {
+    	_reserv(other.m_size);
+    	m_size = other.size;
+		memcpy(m_data, other.m_data, sizeof(T) * m_size);
+    }
+
+    bool operator==(const buffer& other) const
+    {
+    	if (m_size != other.m_size)
+    		return false;
+    	for (int i = 0; i < m_size; ++i)
+    		if (m_data[i] != other.m_data[i])
+    			return false;
+    	return true;
+    }
 
 	buffer(): m_data(nullptr), m_size(0), m_reserved(0)
 	{}
@@ -34,7 +54,7 @@ public:
 		if (data != nullptr)
 		{
 			m_data = static_cast<uint8_t*>(malloc(size * sizeof(T)));
-			memcpy(m_data, data, size);
+			memcpy(m_data, data, sizeof(T) * size);
 			m_reserved = size;
 			m_size = size;
 		}
