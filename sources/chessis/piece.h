@@ -51,6 +51,11 @@ namespace chessis
 					return 0;
 			}
 		}
+
+		bool operator == (const Piece& other) const
+		{
+			return type == other.type && health == other.health && attribute == other.attribute && x == other.x && y == other.y && o == other.o;
+		}
 	};
 
 #pragma pack(pop)

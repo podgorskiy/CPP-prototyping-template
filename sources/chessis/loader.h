@@ -24,6 +24,8 @@ namespace chessis
 		board.size_y = height;
 		board.cell_state.resize(board.size_x * board.size_y);
 		memset(board.cell_state.data(), 0, board.size_x * board.size_y * sizeof(int));
+		memset(board.black_ops, 0, MAX_OPS * sizeof(Piece));
+		memset(board.white_ops, 0, MAX_OPS * sizeof(Piece));
 
 		for (int i = 0; i < board.size_y; ++i)
 		{

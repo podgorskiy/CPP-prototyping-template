@@ -46,6 +46,23 @@ namespace chessis
 		}
 	}
 
+	inline Move RandomMove(Board& board, Turn::Enum turn)
+	{
+		if (game_over(board))
+		{
+			return Move();
+		}
+
+		stack_buffer<Move, MAX_SUCCESSORS> successors;
+		GenerateMoves(board, turn, successors);
+
+		if (successors.empty())
+		{
+			return Move();
+		}
+
+		return successors[rand() % successors.size()];
+	}
 
 	inline void DoMove(Board& board, Move cmd, Turn::Enum turn, bool final = false)
 	{

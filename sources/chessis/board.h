@@ -22,8 +22,8 @@ namespace chessis
 		int size_y;
 		buffer<int> cell_state;
 
-		Piece white_ops[MAX_OPS];
-		Piece black_ops[MAX_OPS];
+		Piece white_ops[MAX_OPS] = {{Piece::Dead, 0, 0, 0, 0, 0}};
+		Piece black_ops[MAX_OPS] = {{Piece::Dead, 0, 0, 0, 0, 0}};
 
 		uint8_t b_ops_count = 0;
 		uint8_t w_ops_count = 0;

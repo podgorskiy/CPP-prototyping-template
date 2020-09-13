@@ -4,7 +4,7 @@
 
 TEST_CASE("[BASIC] moves")
 {
-	SUBCASE("Basic")
+	SUBCASE("Obvious best move")
 	{
 		chessis::Board board;
 		chessis::make_board(board, "####..\n"
@@ -18,6 +18,38 @@ TEST_CASE("[BASIC] moves")
 		CHECK_EQ(move1.dir, chessis::Direction::Left);
 		CHECK_EQ(move1.op_id, 0);
 		CHECK_EQ(move1.new_eval, 1000 * 100 + board.white_total_health + 3);
+	}
+	SUBCASE("Random moves")
+	{
+		chessis::Board board;
+		chessis::Turn::Enum turn = chessis::Turn::WhitePLay;
+		chessis::make_board(board, "####..\n"
+		                           "#a...A\n"
+		                           "...#..\n"
+		                           "..#...\n"
+		                           "a....A\n");
+		chessis::Board board_copy = board;
+		int count = 0;
+		while (true)
+		{
+			auto move = chessis::RandomMove(board, turn);
+			if (move.action == chessis::Move::end)
+				break;
+			chessis::DoMove(board, move, turn); count++;
+			turn = Next(turn);
+		}
+		printf("%d\n", count);
+		for (int i = 0; i < count; ++i)
+		{
+			chessis::UndoMove(board);
+		}
+		CHECK_EQ(board.cell_state, board_copy.cell_state);
+		CHECK_EQ(board.white_total_health, board_copy.white_total_health);
+		CHECK_EQ(board.black_total_health, board_copy.black_total_health);
+		for (int i = 0; i < board.b_ops_count; ++i)
+			CHECK_EQ(board.black_ops[i], board_copy.black_ops[i]);
+		for (int i = 0; i < board.w_ops_count; ++i)
+			CHECK_EQ(board.white_ops[i], board_copy.white_ops[i]);
 
 		printf("a");
 
