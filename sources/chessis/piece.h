@@ -42,11 +42,11 @@ namespace chessis
 			switch (type)
 			{
 				case Piece::Pawn:
-					return 100 * (health ? get_max_health() + health : 0);
+					return 100 * (health ? get_max_health() / 2 + health : 0);
 				case Piece::Knight:
-					return 200 * (health ? get_max_health() + health : 0);
+					return 200 * (health ? get_max_health() / 2 + health : 0);
 				case Piece::Archer:
-					return 200 * (health ? get_max_health() + health : 0);
+					return 200 * (health ? get_max_health() / 2 + health : 0);
 				default:
 					return 0;
 			}

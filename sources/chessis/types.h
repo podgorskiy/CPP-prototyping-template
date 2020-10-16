@@ -13,10 +13,10 @@ namespace chessis
 
 	enum
 	{
-		MAX_OPS = 12,
+		MAX_OPS = 20,
 		MAX_MOVES = 4,
 		MAX_SUCCESSORS = MAX_OPS * MAX_MOVES,
-		MAX_DEPTH = 30,
+		MAX_DEPTH = 300,
 	};
 
 	inline Turn::Enum Next(Turn::Enum t)
