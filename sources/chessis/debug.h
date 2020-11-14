@@ -9,9 +9,9 @@
 
 namespace chessis
 {
-	inline Move InferCommand(const Board& board, int op_id, Turn::Enum turn, int x, int y)
+	inline Move InferCommand(const Board& board, int op_id, int x, int y)
 	{
-		const Piece* ops = turn == Turn::WhitePLay ? board.white_ops : board.black_ops;
+		const Piece* ops = board.turn == Turn::WhitePLay ? board.white_ops : board.black_ops;
 		const Piece& op = ops[op_id];
 		if (board.valid_coord(x, y))
 		{
@@ -28,7 +28,7 @@ namespace chessis
 			}
 			else
 			{
-				const Piece& enemy = board.get_opp(x, y, turn == Turn::BlackPlay, turn == Turn::WhitePLay);
+				const Piece& enemy = board.get_opp(x, y, board.turn == Turn::BlackPlay, board.turn == Turn::WhitePLay);
 				if (enemy.type != Piece::Dead)
 				{
 					if (x == op.x - 1 && y == op.y)
@@ -45,7 +45,7 @@ namespace chessis
 		return Move(0, Move::end, Direction::NoDir, -1);
 	}
 
-	inline void DebugUI(Board& board, Turn::Enum& turn)
+	inline void DebugUI(Board& board)
 	{
 		const char* labels[8] = {"", "Block", "WP", "BP", "WK", "BK", "WA", "BA"};
 		const ImVec4 colors[8] = {
@@ -66,7 +66,7 @@ namespace chessis
 		static std::vector<Move> moves;
 		ImVec2 poses[10][20];
 
-		int e = Evaluate(board, turn, 0);
+		int e = Evaluate(board, 0);
 
 		bool do_move = false;
 		char buff[256];
@@ -101,7 +101,7 @@ namespace chessis
 
 				ImGui::Button(buff, ImVec2(60, 60));
 
-				if (turn == Turn::WhitePLay)
+				if (board.turn == Turn::WhitePLay)
 				{
 					int playable_op = board.get_opp_id(j, i, true, false);
 					if (playable_op != -1 && ImGui::BeginDragDropSource())
@@ -116,14 +116,13 @@ namespace chessis
 						if (payload)
 						{
 							int op_id = *((int*) (payload->Data));
-							Move cmd = InferCommand(board, op_id, turn, j, i);
+							Move cmd = InferCommand(board, op_id, j, i);
 							if (cmd.action != Move::end)
 							{
 								if (ImGui::AcceptDragDropPayload("op"))
 								{
-									DoMove(board, cmd, turn, false);
+									DoMove(board, cmd, false);
 									moves.clear();
-									turn = Next(turn);
 									do_move = true;
 									last_move = cmd;
 								}
@@ -147,7 +146,7 @@ namespace chessis
 				auto pos2 = ImGui::GetCursorPos();
 				for (auto& move: moves)
 				{
-					Piece* ops = turn == Turn::WhitePLay ? board.white_ops : board.black_ops;
+					Piece* ops = board.turn == Turn::WhitePLay ? board.white_ops : board.black_ops;
 					Piece& op = ops[move.op_id];
 
 					int _x = op.x;
@@ -178,7 +177,7 @@ namespace chessis
 			{
 				if (last_move.action == Move::attack)
 				{
-					Piece* ops = turn != Turn::WhitePLay ? board.white_ops : board.black_ops;
+					Piece* ops = board.turn != Turn::WhitePLay ? board.white_ops : board.black_ops;
 					Piece& op = ops[last_move.op_id];
 
 					int _x = op.x;
@@ -213,7 +212,7 @@ namespace chessis
 		ImGui::NextColumn();
 
 		int t = board.positions;
-		ImGui::Text("Evaluation: %d", Evaluate(board, Turn::WhitePLay, 0));
+		ImGui::Text("Evaluation: %d", Evaluate(board, 0));
 		board.positions = t;
 
 		static int white_depth = 6;
@@ -223,7 +222,7 @@ namespace chessis
 
 		if (ImGui::Button("Skip"))
 		{
-			turn = Next(turn);
+			board.turn = Next(board.turn);
 			do_move = true;
 		}
 		static bool autoplay = false;
@@ -232,22 +231,21 @@ namespace chessis
 		ImGui::Checkbox("Autoplay", &autoplay);
 		ImGui::Checkbox("Play opponent", &play_opponent);
 		ImGui::Checkbox("Autoeval", &autoeval);
-		if (ImGui::Button("Make move") || (turn == Turn::BlackPlay && do_move && play_opponent) || (autoplay && !game_over(board)))
+		if (ImGui::Button("Make move") || (board.turn == Turn::BlackPlay && do_move && play_opponent) || (autoplay && !game_over(board)))
 		{
 			board.positions = 0;
 			//if (turn == BlackPlay)
 			//	std::swap(alpha, beta);
-			int depth = turn == Turn::BlackPlay ? black_depth : white_depth;
+			int depth = board.turn == Turn::BlackPlay ? black_depth : white_depth;
 
-			last_move = FindBestMove(board, depth, turn);
+			last_move = FindBestMove(board, depth);
 			moves.clear();
 
-			DoMove(board, last_move, turn);
-			turn = Next(turn);
-			if (turn == Turn::WhitePLay && autoeval)
+			DoMove(board, last_move);
+			if (board.turn == Turn::WhitePLay && autoeval)
 			{
-			    depth = turn == Turn::BlackPlay ? black_depth : white_depth;
-				moves = ReturnAllMoves<true>(board, depth, turn);
+			    depth = board.turn == Turn::BlackPlay ? black_depth : white_depth;
+				moves = ReturnAllMoves<true>(board, depth);
 			}
 		}
 //		if (ImGui::Button("Eval moves. No prunning"))
@@ -259,14 +257,14 @@ namespace chessis
 		if (ImGui::Button("Eval moves. Alpha beta prunning"))
 		{
 			board.positions = 0;
-			int depth = turn == Turn::BlackPlay ? black_depth : white_depth;
-			moves = ReturnAllMoves<true>(board, depth, turn);
+			int depth = board.turn == Turn::BlackPlay ? black_depth : white_depth;
+			moves = ReturnAllMoves<true>(board, depth);
 		}
 
 		if (ImGui::Button("Undo move"))
 		{
 			UndoMove(board);
-			turn = Next(turn);
+			board.turn = Next(board.turn);
 			moves.clear();
 		}
 

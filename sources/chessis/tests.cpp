@@ -13,7 +13,7 @@ TEST_CASE("[BASIC] moves")
 		                           "......\n"
 		                           "......\n");
 
-		auto move1 = chessis::FindBestMove(board, 6, chessis::Turn::WhitePLay);
+		auto move1 = chessis::FindBestMove(board, 6);
 		CHECK_EQ(move1.action, chessis::Move::move);
 		CHECK_EQ(move1.dir, chessis::Direction::Left);
 		CHECK_EQ(move1.op_id, 0);
@@ -22,7 +22,7 @@ TEST_CASE("[BASIC] moves")
 	SUBCASE("Random moves")
 	{
 		chessis::Board board;
-		chessis::Turn::Enum turn = chessis::Turn::WhitePLay;
+		board.turn = chessis::Turn::WhitePLay;
 		chessis::make_board(board, "####..\n"
 		                           "#a...A\n"
 		                           "...#..\n"
@@ -32,11 +32,10 @@ TEST_CASE("[BASIC] moves")
 		int count = 0;
 		while (true)
 		{
-			auto move = chessis::RandomMove(board, turn);
+			auto move = chessis::RandomMove(board);
 			if (move.action == chessis::Move::end)
 				break;
-			chessis::DoMove(board, move, turn); count++;
-			turn = Next(turn);
+			chessis::DoMove(board, move); count++;
 		}
 		printf("%d\n", count);
 		for (int i = 0; i < count; ++i)

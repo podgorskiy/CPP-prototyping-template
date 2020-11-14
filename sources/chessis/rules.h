@@ -4,10 +4,10 @@
 
 namespace chessis
 {
-	inline void GenerateMoves(const Board& board, Turn::Enum turn, stack_buffer<Move, MAX_SUCCESSORS>& successors)
+	inline void GenerateMoves(const Board& board, stack_buffer<Move, MAX_SUCCESSORS>& successors)
 	{
-		const Piece* ops = turn == Turn::WhitePLay ? board.white_ops : board.black_ops;
-		int count = turn == Turn::WhitePLay ? board.w_ops_count : board.b_ops_count;
+		const Piece* ops = board.turn == Turn::WhitePLay ? board.white_ops : board.black_ops;
+		int count = board.turn == Turn::WhitePLay ? board.w_ops_count : board.b_ops_count;
 
 		for (int i = 0; i < count; ++i)
 		{
@@ -25,7 +25,7 @@ namespace chessis
 				int x = op.x;
 				int y = op.y;
 				MoveCoord(x, y, dir);
-				auto& enemy_opp = board.get_opp(x, y, turn == Turn::BlackPlay, turn == Turn::WhitePLay);
+				auto& enemy_opp = board.get_opp(x, y, board.turn == Turn::BlackPlay, board.turn == Turn::WhitePLay);
 
 				if (enemy_opp.type != 0)
 				{
@@ -46,7 +46,7 @@ namespace chessis
 		}
 	}
 
-	inline Move RandomMove(Board& board, Turn::Enum turn)
+	inline Move RandomMove(Board& board)
 	{
 		if (game_over(board))
 		{
@@ -54,7 +54,7 @@ namespace chessis
 		}
 
 		stack_buffer<Move, MAX_SUCCESSORS> successors;
-		GenerateMoves(board, turn, successors);
+		GenerateMoves(board, successors);
 
 		if (successors.empty())
 		{
@@ -64,21 +64,21 @@ namespace chessis
 		return successors[rand() % successors.size()];
 	}
 
-	inline void DoMove(Board& board, Move cmd, Turn::Enum turn, bool final = false)
+	inline void DoMove(Board& board, Move cmd, bool final = false)
 	{
-		Piece* ops = turn == Turn::WhitePLay ? board.white_ops : board.black_ops;
-		Piece* enemy_ops = turn == Turn::BlackPlay ? board.white_ops : board.black_ops;
-		int& total_health = turn == Turn::BlackPlay ? board.white_total_health : board.black_total_health;
+		Piece* ops = board.turn == Turn::WhitePLay ? board.white_ops : board.black_ops;
+		Piece* enemy_ops = board.turn == Turn::BlackPlay ? board.white_ops : board.black_ops;
+		int& total_health = board.turn == Turn::BlackPlay ? board.white_total_health : board.black_total_health;
 		Piece& op = ops[cmd.op_id];
 		if (!final)
 		{
-			board.cmd_history.emplace_back(cmd, turn);
+			board.cmd_history.emplace_back(cmd, board.turn);
 		}
 		switch (cmd.action)
 		{
 			case Move::move:
 			{
-				board.move_piece(op.x, op.y, cmd.dir, turn);
+				board.move_piece(op.x, op.y, cmd.dir, board.turn);
 				break;
 			}
 			case Move::attack:
@@ -86,7 +86,7 @@ namespace chessis
 				int x = op.x;
 				int y = op.y;
 				MoveCoord(x, y, cmd.dir);
-				int enemy_opp_id = board.get_opp_id_nch(x, y, turn == Turn::BlackPlay, turn == Turn::WhitePLay);
+				int enemy_opp_id = board.get_opp_id_nch(x, y, board.turn == Turn::BlackPlay, board.turn == Turn::WhitePLay);
 				assert(enemy_opp_id != -1);
 				auto& enemy_opp = enemy_ops[enemy_opp_id];
 				Piece enemy_opp_backup = enemy_opp;
@@ -113,6 +113,7 @@ namespace chessis
 				break;
 			}
 		}
+		board.turn = Next(board.turn);
 	}
 
 	inline void UndoMove(Board& board)
@@ -149,5 +150,6 @@ namespace chessis
 				break;
 			}
 		}
+		board.turn = Next(board.turn);
 	}
 }

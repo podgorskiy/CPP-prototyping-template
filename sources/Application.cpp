@@ -42,9 +42,9 @@ Application::Application(int argc, const char* const* argv)
 									   "...##PP.\n");
 
             meter.measure([&](int i) {
-				auto move1 = FindBestMove(board, 12, Turn::BlackPlay);
+				auto move1 = FindBestMove(board, 12);
 				DoMove(board, move1, Turn::BlackPlay);
-				auto move2 = FindBestMove(board, 12, Turn::WhitePLay);
+				auto move2 = FindBestMove(board, 12);
 				DoMove(board, move2, Turn::WhitePLay);
             });
         }),
@@ -55,9 +55,9 @@ Application::Application(int argc, const char* const* argv)
 									   "...##P.\n");
 
             meter.measure([&](int i) {
-				auto move1 = FindBestMove(board, 18, Turn::BlackPlay);
+				auto move1 = FindBestMove(board, 18);
 				DoMove(board, move1, Turn::BlackPlay);
-				auto move2 = FindBestMove(board, 18, Turn::WhitePLay);
+				auto move2 = FindBestMove(board, 18);
 				DoMove(board, move2, Turn::WhitePLay);
             });
         })
@@ -69,6 +69,7 @@ Application::Application(int argc, const char* const* argv)
 	fsal::FileSystem fs;
 	std::string b = fs.Open("../board.txt");
 	chessis::make_board(board, b);
+	board.turn = Turn::WhitePLay;
 	srand(time(0));
 }
 
@@ -79,9 +80,7 @@ Application::~Application()
 
 void Application::Draw(float time)
 {
-	static Turn::Enum turn = Turn::WhitePLay;
-
-	chessis::DebugUI(board, turn);
+	chessis::DebugUI(board);
 
 }
 

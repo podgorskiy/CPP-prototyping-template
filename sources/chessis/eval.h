@@ -5,7 +5,7 @@
 
 namespace chessis
 {
-	inline int Evaluate(const Board& board, Turn::Enum turn, int depth)
+	inline int Evaluate(const Board& board, int depth)
 	{
 		int distance_score = 0;
 		for (int i = 0; i < board.w_ops_count; ++i)
@@ -25,13 +25,15 @@ namespace chessis
 		bool black_win = board.white_total_health == 0;
 		bool white_win = board.black_total_health == 0;
 
-		if (black_win) { eog_penalty = -1000 * 100 - depth * 10; }
-		if (white_win) { eog_penalty = 1000 * 100 + depth * 10; }
+//		if (black_win) { eog_penalty = -1000 * 100 - depth * 10; }
+//		if (white_win) { eog_penalty = 1000 * 100 + depth * 10; }
+		if (black_win) { eog_penalty = -1000 * 100; }
+		if (white_win) { eog_penalty = 1000 * 100; }
 
 		int e = board.white_total_health - board.black_total_health + distance_score + eog_penalty;
 
 		++board.positions;
-		return (turn == Turn::WhitePLay ? e : -e);
+		return (board.turn == Turn::WhitePLay ? e : -e);
 	}
 
 	inline bool game_over(const Board& board)

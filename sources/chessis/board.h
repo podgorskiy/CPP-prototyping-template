@@ -4,6 +4,8 @@
 #include "move.h"
 #include "utils/buffer.h"
 #include "utils/stack_buffer.h"
+#include <functional>
+#include "xxhash.h"
 
 
 namespace chessis
@@ -30,6 +32,7 @@ namespace chessis
 
 		int white_total_health = 0;
 		int black_total_health = 0;
+		Turn::Enum turn;
 
 		stack_buffer <std::tuple<Piece, int, int>, MAX_DEPTH> op_history;
 		buffer <std::pair<Move, Turn::Enum> > cmd_history;
@@ -193,6 +196,73 @@ namespace chessis
 				}
 				printf("\n");
 			}
+		}
+	};
+
+	struct BoardBrief
+	{
+		Piece white_ops[MAX_OPS] = {{Piece::Dead, 0, 0, 0, 0, 0}};
+		Piece black_ops[MAX_OPS] = {{Piece::Dead, 0, 0, 0, 0, 0}};
+
+		uint8_t b_ops_count = 0;
+		uint8_t w_ops_count = 0;
+
+		Turn::Enum turn;
+
+		BoardBrief(const Board& b)
+		{
+			memcpy(white_ops, b.white_ops, 4 * MAX_OPS);
+			memcpy(black_ops, b.black_ops, 4 * MAX_OPS);
+			b_ops_count = b.b_ops_count;
+			w_ops_count = b.w_ops_count;
+			turn = b.turn;
+		}
+		BoardBrief()
+		{
+			memset(white_ops, 0, 4 * MAX_OPS);
+			memset(black_ops, 0, 4 * MAX_OPS);
+			b_ops_count = 0;
+			w_ops_count = 0;
+			turn = Turn::WhitePLay;
+		}
+	};
+
+	inline bool operator==(const BoardBrief& lhs, const BoardBrief& rhs)
+	{
+		if (lhs.w_ops_count == rhs.w_ops_count && lhs.b_ops_count == rhs.b_ops_count && rhs.turn == lhs.turn)
+		{
+			for (int i = 0; i < lhs.w_ops_count; ++i)
+			{
+				if (!(lhs.white_ops[i] == rhs.white_ops[i]))
+					return false;
+			}
+			for (int i = 0; i < lhs.b_ops_count; ++i)
+			{
+				if (!(lhs.black_ops[i] == rhs.black_ops[i]))
+					return false;
+			}
+			return true;
+		}
+		return false;
+	}
+
+	inline size_t hash_combine(size_t lhs, size_t rhs)
+	{
+		lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
+		return lhs;
+	}
+}
+
+namespace std
+{
+	template<>
+	struct hash<chessis::BoardBrief>
+	{
+		std::size_t operator()(chessis::BoardBrief const& s) const noexcept
+		{
+			return chessis::hash_combine(chessis::hash_combine(
+					XXH64(s.white_ops, 4 * s.w_ops_count, 5),
+					XXH64(s.black_ops, 4 * s.b_ops_count, 15)), XXH64(&s.turn, 1, 13));
 		}
 	};
 }

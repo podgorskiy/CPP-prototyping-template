@@ -29,6 +29,11 @@ public:
 		memcpy(m_data, other.m_data, sizeof(T) * m_size);
     }
 
+    ~buffer()
+    {
+    	free(m_data);
+    }
+
     buffer& operator=(const buffer& other)
     {
     	_reserv(other.m_size);

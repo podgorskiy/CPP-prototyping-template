@@ -42,11 +42,11 @@ namespace chessis
 			switch (type)
 			{
 				case Piece::Pawn:
-					return 100 * (health ? get_max_health() / 2 + health : 0);
+					return 100 * (health ? 1 + health : 0);
 				case Piece::Knight:
-					return 200 * (health ? get_max_health() / 2 + health : 0);
+					return 100 * (health ? 1 + health : 0);
 				case Piece::Archer:
-					return 200 * (health ? get_max_health() / 2 + health : 0);
+					return 100 * (health ? 1 + health : 0);
 				default:
 					return 0;
 			}
@@ -54,7 +54,7 @@ namespace chessis
 
 		bool operator == (const Piece& other) const
 		{
-			return type == other.type && health == other.health && attribute == other.attribute && x == other.x && y == other.y && o == other.o;
+			return *((const uint32_t*)this) == *((const uint32_t*)&other);
 		}
 	};
 

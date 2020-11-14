@@ -26,6 +26,7 @@ namespace chessis
 		memset(board.cell_state.data(), 0, board.size_x * board.size_y * sizeof(int));
 		memset(board.black_ops, 0, MAX_OPS * sizeof(Piece));
 		memset(board.white_ops, 0, MAX_OPS * sizeof(Piece));
+		board.turn = Turn::WhitePLay;
 
 		for (int i = 0; i < board.size_y; ++i)
 		{
