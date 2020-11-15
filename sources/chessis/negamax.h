@@ -19,7 +19,8 @@ namespace chessis
 
 		if (depth == 0 || game_over(board))
 		{
-			return Evaluate(board, depth);
+			int r =  Evaluate(board) - depth;
+            return r;
 		}
 
 		stack_buffer<Move, MAX_SUCCESSORS> successors;
@@ -27,7 +28,7 @@ namespace chessis
 
 		if (successors.empty())
 		{
-			return Evaluate(board, depth);
+			return Evaluate(board);
 		}
 
 		int value = INT_MIN;
@@ -58,7 +59,7 @@ namespace chessis
 		std::unordered_map<BoardBrief, std::pair<int, int> > cache;
 		if (game_over(board))
 		{
-			return Move(Evaluate(board, depth));
+			return Move(Evaluate(board));
 		}
 
 		stack_buffer<Move, MAX_SUCCESSORS> successors;
@@ -67,7 +68,7 @@ namespace chessis
 
 		if (successors.empty())
 		{
-			return Move(Evaluate(board, depth));
+			return Move(Evaluate(board));
 		}
 
 		int best_value = INT_MIN;
@@ -110,7 +111,7 @@ namespace chessis
 		std::unordered_map<BoardBrief, std::pair<int, int>> cache;
 		if (game_over(board))
 		{
-			return { Move(Evaluate(board, depth)) };
+			return { Move(Evaluate(board)) };
 		}
 
 		stack_buffer<Move, MAX_SUCCESSORS> successors;
@@ -119,7 +120,7 @@ namespace chessis
 
 		if (successors.empty())
 		{
-			return { Move(Evaluate(board, depth)) };
+			return { Move(Evaluate(board)) };
 		}
 
 		int alpha = INT_MIN + 1;

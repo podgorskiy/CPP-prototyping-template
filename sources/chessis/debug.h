@@ -66,7 +66,7 @@ namespace chessis
 		static std::vector<Move> moves;
 		ImVec2 poses[10][20];
 
-		int e = Evaluate(board, 0);
+		int e = Evaluate(board);
 
 		bool do_move = false;
 		char buff[256];
@@ -212,7 +212,7 @@ namespace chessis
 		ImGui::NextColumn();
 
 		int t = board.positions;
-		ImGui::Text("Evaluation: %d", Evaluate(board, 0));
+		ImGui::Text("Evaluation: %d", EvaluateClean(board));
 		board.positions = t;
 
 		static int white_depth = 6;
